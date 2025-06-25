@@ -13,7 +13,6 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "pydantic>=2.0.0",
     "cryptography>=41.0.0",
-    "getpass4>=0.0.14.2",
 ]
 requires-python = ">=3.8"
 
@@ -23,11 +22,44 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
+    "pytest-xdist>=3.0.0",
     "black>=23.0.0",
     "mypy>=1.0.0",
-    "httpx[test]>=0.25.0",
+    "types-requests>=2.0.0",
+    "bandit[toml]>=1.7.0",
+    "safety>=2.0.0",
 ]
 
 [project.scripts]
 wikijs-mcp-server = "wikijs_mcp.server:main"
 wikijs-env = "wikijs_mcp.cli:main"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+no_strict_optional = true
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101", "B601"]

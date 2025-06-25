@@ -115,7 +115,8 @@ class TestWikiJSConfig:
     @patch('getpass.getpass')
     @patch('tempfile.NamedTemporaryFile')
     @patch('wikijs_mcp.config.load_dotenv')
-    def test_load_config_from_encrypted_file(self, mock_load_dotenv, mock_temp_file, 
+    @patch('os.remove')
+    def test_load_config_from_encrypted_file(self, mock_remove, mock_load_dotenv, mock_temp_file, 
                                            mock_getpass, mock_encryption_class, temp_dir):
         """Test loading config from encrypted .env file."""
         env_file = os.path.join(temp_dir, ".env")
@@ -141,8 +142,7 @@ class TestWikiJSConfig:
         }
         
         with patch.dict(os.environ, env_vars), \
-             patch('os.path.exists', return_value=False), \
-             patch('os.remove') as mock_remove:
+             patch('os.path.exists', return_value=False):
             
             config = WikiJSConfig.load_config(env_file)
         

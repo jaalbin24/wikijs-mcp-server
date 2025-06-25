@@ -2,7 +2,7 @@
 
 import os
 import pytest
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, MagicMock
 from wikijs_mcp.crypto import EnvEncryption
 
 
@@ -124,9 +124,11 @@ class TestEnvEncryption:
         assert not os.path.exists(temp_env_file)
     
     @patch('os.system')
-    def test_edit_env_file_success(self, mock_system, temp_env_file, mock_getpass):
+    @patch('os.path.exists')
+    def test_edit_env_file_success(self, mock_exists, mock_system, temp_env_file, mock_getpass):
         """Test successful editing of encrypted env file."""
         mock_system.return_value = 0  # Success exit code
+        mock_exists.return_value = True
         encryption = EnvEncryption(temp_env_file)
         
         # Encrypt the file first
@@ -138,9 +140,11 @@ class TestEnvEncryption:
         mock_system.assert_called_once()
     
     @patch('os.system')
-    def test_edit_env_file_editor_failure(self, mock_system, temp_env_file, mock_getpass):
+    @patch('os.path.exists')
+    def test_edit_env_file_editor_failure(self, mock_exists, mock_system, temp_env_file, mock_getpass):
         """Test editing when editor fails."""
         mock_system.return_value = 1  # Failure exit code
+        mock_exists.return_value = True
         encryption = EnvEncryption(temp_env_file)
         
         # Encrypt the file first

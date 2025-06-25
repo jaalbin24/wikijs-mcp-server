@@ -146,3 +146,6 @@ dmypy.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Bandit security reports
+bandit-report.json
