@@ -98,6 +98,44 @@ case "$1" in
         exec python3 -m pytest tests/
         ;;
     
+    "lint")
+        print_info "Running code formatting check..."
+        cd /app
+        exec black --check --diff wikijs_mcp/ tests/
+        ;;
+    
+    "format")
+        print_info "Formatting code with black..."
+        cd /app
+        exec black wikijs_mcp/ tests/
+        ;;
+    
+    "typecheck")
+        print_info "Running type checking..."
+        cd /app
+        exec mypy wikijs_mcp/ --ignore-missing-imports --no-strict-optional
+        ;;
+    
+    "security")
+        print_info "Running security scan..."
+        cd /app
+        exec bandit -r wikijs_mcp/
+        ;;
+    
+    "ci-check")
+        print_info "Running full CI checks..."
+        cd /app
+        echo "=== Code Formatting ==="
+        black --check --diff wikijs_mcp/ tests/ || exit 1
+        echo "=== Type Checking ==="
+        mypy wikijs_mcp/ --ignore-missing-imports --no-strict-optional || exit 1
+        echo "=== Security Scan ==="
+        bandit -r wikijs_mcp/ || exit 1
+        echo "=== Tests ==="
+        python3 -m pytest tests/ || exit 1
+        print_success "All CI checks passed!"
+        ;;
+    
     *)
         print_error "Unknown command: $1"
         echo ""
@@ -109,6 +147,11 @@ case "$1" in
         echo "  edit     - Edit encrypted configuration"
         echo "  status   - Show configuration status"
         echo "  test     - Run test suite"
+        echo "  lint     - Check code formatting"
+        echo "  format   - Format code with black"
+        echo "  typecheck - Run type checking"
+        echo "  security - Run security scan"
+        echo "  ci-check - Run all CI checks"
         echo "  bash     - Interactive bash shell"
         echo "  sh       - Interactive shell"
         echo ""
