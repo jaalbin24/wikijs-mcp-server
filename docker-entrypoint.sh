@@ -137,28 +137,35 @@ case "$1" in
         ;;
     
     *)
-        print_error "Unknown command: $1"
-        echo ""
-        echo "Available commands:"
-        echo "  server   - Start the MCP server (default)"
-        echo "  setup    - Interactive configuration setup"
-        echo "  encrypt  - Encrypt existing .env file"
-        echo "  decrypt  - Decrypt .env.encrypted file"
-        echo "  edit     - Edit encrypted configuration"
-        echo "  status   - Show configuration status"
-        echo "  test     - Run test suite"
-        echo "  lint     - Check code formatting"
-        echo "  format   - Format code with black"
-        echo "  typecheck - Run type checking"
-        echo "  security - Run security scan"
-        echo "  ci-check - Run all CI checks"
-        echo "  bash     - Interactive bash shell"
-        echo "  sh       - Interactive shell"
-        echo ""
-        echo "Examples:"
-        echo "  docker compose run --rm wikijs-mcp-server setup"
-        echo "  docker compose run --rm wikijs-mcp-server encrypt"
-        echo "  docker compose up wikijs-mcp-server"
-        exit 1
+        # If the command is not one of our predefined commands,
+        # execute it directly (allows for python3, etc.)
+        if command -v "$1" > /dev/null 2>&1; then
+            cd /app
+            exec "$@"
+        else
+            print_error "Unknown command: $1"
+            echo ""
+            echo "Available commands:"
+            echo "  server   - Start the MCP server (default)"
+            echo "  setup    - Interactive configuration setup"
+            echo "  encrypt  - Encrypt existing .env file"
+            echo "  decrypt  - Decrypt .env.encrypted file"
+            echo "  edit     - Edit encrypted configuration"
+            echo "  status   - Show configuration status"
+            echo "  test     - Run test suite"
+            echo "  lint     - Check code formatting"
+            echo "  format   - Format code with black"
+            echo "  typecheck - Run type checking"
+            echo "  security - Run security scan"
+            echo "  ci-check - Run all CI checks"
+            echo "  bash     - Interactive bash shell"
+            echo "  sh       - Interactive shell"
+            echo ""
+            echo "Examples:"
+            echo "  docker compose run --rm wikijs-mcp-server setup"
+            echo "  docker compose run --rm wikijs-mcp-server encrypt"
+            echo "  docker compose up wikijs-mcp-server"
+            exit 1
+        fi
         ;;
 esac
