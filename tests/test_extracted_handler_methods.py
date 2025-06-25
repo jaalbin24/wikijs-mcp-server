@@ -143,7 +143,6 @@ class TestExtractedHandlerMethods:
                 'title': 'Page 1',
                 'path': '/page1',
                 'description': 'First page',
-                'author': {'name': 'Author 1'},
                 'updatedAt': '2024-01-01'
             },
             {
@@ -155,16 +154,16 @@ class TestExtractedHandlerMethods:
         ]
         mock_client.list_pages = AsyncMock(return_value=pages_data)
         
-        arguments = {"limit": 10, "offset": 5}
+        arguments = {"limit": 10}
         response = await server._handle_wiki_list_pages(mock_client, arguments)
         
-        assert "Found 2 pages (offset: 5, limit: 10):" in response
+        assert "Found 2 pages (limit: 10):" in response
         assert "**Page 1**" in response
         assert "**Page 2**" in response
         assert "Path: /page1 (ID: 1)" in response
         assert "Description: First page" in response
-        assert "Author: Author 1" in response
-        mock_client.list_pages.assert_called_once_with(10, 5)
+        # Author field removed - not supported by Wiki.js API
+        mock_client.list_pages.assert_called_once_with(10)
     
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     async def test_handle_wiki_list_pages_no_results(self, mock_load_config, mock_wiki_config):
@@ -179,7 +178,7 @@ class TestExtractedHandlerMethods:
         response = await server._handle_wiki_list_pages(mock_client, arguments)
         
         assert response == "No pages found"
-        mock_client.list_pages.assert_called_once_with(50, 0)  # defaults
+        mock_client.list_pages.assert_called_once_with(50)  # default
     
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     async def test_handle_wiki_get_tree(self, mock_load_config, mock_wiki_config):
