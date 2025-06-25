@@ -57,7 +57,7 @@ DEBUG=false  # Optional, enables debug logging
 
 #### Quick Start with Docker
 
-1. **Create your `.env` file** in the `config/` directory with your WikiJS settings
+1. **Create your `.env` file** in the project root with your WikiJS settings
 
 2. **Start the server:**
 ```bash

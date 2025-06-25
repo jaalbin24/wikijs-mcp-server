@@ -1,7 +1,9 @@
 """Tests for MCP server functionality."""
 
+import asyncio
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from mcp.types import Tool, TextContent
 from wikijs_mcp.server import WikiJSMCPServer
 
 
@@ -42,4 +44,5 @@ class TestWikiJSMCPServer:
         
         with pytest.raises(ValueError, match="Invalid config"):
             await server.run()
+    
     

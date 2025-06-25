@@ -6,13 +6,12 @@ services:
     container_name: wikijs-mcp-server
     restart: unless-stopped
     
-    # Interactive mode for password input
     stdin_open: true
     tty: true
     
-    # Mount config directory for persistent encrypted config
+    # Mount .env file for configuration
     volumes:
-      - ./config:/app/config
+      - ./.env:/app/.env:ro
       - wikijs-mcp-data:/app/data
     
     # Environment variables (optional overrides)
@@ -42,30 +41,6 @@ services:
           memory: 256M
           cpus: '0.1'
 
-  # Optional: Setup service for initial configuration
-  wikijs-mcp-setup:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: wikijs-mcp-setup
-    
-    # Interactive mode for setup
-    stdin_open: true
-    tty: true
-    
-    # Mount config directory
-    volumes:
-      - ./config:/app/config
-    
-    # Override command for setup
-    command: ["setup"]
-    
-    # Only run when needed
-    profiles:
-      - setup
-    
-    networks:
-      - wikijs-mcp-network
 
 volumes:
   wikijs-mcp-data:

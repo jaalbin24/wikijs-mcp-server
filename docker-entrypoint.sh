@@ -4,14 +4,7 @@ set -e
 # WikiJS MCP Server Docker Entrypoint Script
 
 # Set default config path
-export CONFIG_DIR="/app/config"
-export ENV_FILE="$CONFIG_DIR/.env"
-
-# Ensure config directory exists
-mkdir -p "$CONFIG_DIR"
-
-# Change to config directory for relative paths
-cd "$CONFIG_DIR"
+export ENV_FILE="/app/.env"
 
 # Function to print colored output
 print_info() {
@@ -40,7 +33,7 @@ case "$1" in
             print_success "Found configuration file"
         else
             print_error "No configuration found!"
-            echo "Please create a .env file in the config directory with your WikiJS settings."
+            echo "Please create a .env file in the project root with your WikiJS settings."
             exit 1
         fi
         
