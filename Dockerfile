@@ -16,7 +16,6 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        build-essential \
         curl \
         nano \
         vim \
@@ -32,7 +31,7 @@ RUN pip install -e .[dev]
 # Copy application code
 COPY . .
 
-# Create directory for encrypted config
+# Create directory for config
 RUN mkdir -p /app/config && \
     chown -R wikijs:wikijs /app
 

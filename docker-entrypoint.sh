@@ -35,51 +35,18 @@ case "$1" in
     "server")
         print_info "Starting WikiJS MCP Server..."
         
-        # Check if encrypted config exists
-        if [ -f "$ENV_FILE.encrypted" ]; then
-            print_success "Found encrypted configuration"
-        elif [ -f "$ENV_FILE" ]; then
-            print_warning "Found unencrypted configuration"
-            echo "Consider encrypting it with: docker compose run --rm wikijs-mcp-server encrypt"
+        # Check if config exists
+        if [ -f "$ENV_FILE" ]; then
+            print_success "Found configuration file"
         else
             print_error "No configuration found!"
-            echo "Run setup with: docker compose run --rm wikijs-mcp-server setup"
+            echo "Please create a .env file in the config directory with your WikiJS settings."
             exit 1
         fi
         
         # Start the server
         cd /app
         exec python3 -m wikijs_mcp.server
-        ;;
-    
-    "setup")
-        print_info "Setting up WikiJS MCP Server configuration..."
-        cd /app
-        exec python3 -m wikijs_mcp.cli setup --env-file "$ENV_FILE"
-        ;;
-    
-    "encrypt")
-        print_info "Encrypting configuration..."
-        cd /app
-        exec python3 -m wikijs_mcp.cli encrypt --env-file "$ENV_FILE"
-        ;;
-    
-    "decrypt")
-        print_info "Decrypting configuration..."
-        cd /app
-        exec python3 -m wikijs_mcp.cli decrypt --env-file "$ENV_FILE"
-        ;;
-    
-    "edit")
-        print_info "Editing encrypted configuration..."
-        cd /app
-        exec python3 -m wikijs_mcp.cli edit --env-file "$ENV_FILE"
-        ;;
-    
-    "status")
-        print_info "Checking configuration status..."
-        cd /app
-        exec python3 -m wikijs_mcp.cli status --env-file "$ENV_FILE"
         ;;
     
     "bash")
@@ -146,25 +113,19 @@ case "$1" in
             print_error "Unknown command: $1"
             echo ""
             echo "Available commands:"
-            echo "  server   - Start the MCP server (default)"
-            echo "  setup    - Interactive configuration setup"
-            echo "  encrypt  - Encrypt existing .env file"
-            echo "  decrypt  - Decrypt .env.encrypted file"
-            echo "  edit     - Edit encrypted configuration"
-            echo "  status   - Show configuration status"
-            echo "  test     - Run test suite"
-            echo "  lint     - Check code formatting"
-            echo "  format   - Format code with black"
+            echo "  server    - Start the MCP server (default)"
+            echo "  test      - Run test suite"
+            echo "  lint      - Check code formatting"
+            echo "  format    - Format code with black"
             echo "  typecheck - Run type checking"
-            echo "  security - Run security scan"
-            echo "  ci-check - Run all CI checks"
-            echo "  bash     - Interactive bash shell"
-            echo "  sh       - Interactive shell"
+            echo "  security  - Run security scan"
+            echo "  ci-check  - Run all CI checks"
+            echo "  bash      - Interactive bash shell"
+            echo "  sh        - Interactive shell"
             echo ""
             echo "Examples:"
-            echo "  docker compose run --rm wikijs-mcp-server setup"
-            echo "  docker compose run --rm wikijs-mcp-server encrypt"
             echo "  docker compose up wikijs-mcp-server"
+            echo "  docker compose run --rm wikijs-mcp-server test"
             exit 1
         fi
         ;;

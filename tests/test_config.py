@@ -111,76 +111,9 @@ class TestWikiJSConfig:
         assert config.debug is True
         mock_load_dotenv.assert_called_with(temp_env_file)
     
-    @patch('wikijs_mcp.config.EnvEncryption')
-    @patch('getpass.getpass')
-    @patch('tempfile.NamedTemporaryFile')
-    @patch('wikijs_mcp.config.load_dotenv')
-    @patch('os.remove')
-    def test_load_config_from_encrypted_file(self, mock_remove, mock_load_dotenv, mock_temp_file, 
-                                           mock_getpass, mock_encryption_class, temp_dir):
-        """Test loading config from encrypted .env file."""
-        env_file = os.path.join(temp_dir, ".env")
-        
-        # Mock encryption instance
-        mock_encryption = Mock()
-        mock_encryption.has_encrypted_env.return_value = True
-        mock_encryption.decrypt_env_file.return_value = True
-        mock_encryption_class.return_value = mock_encryption
-        
-        # Mock temporary file
-        temp_path = "/tmp/test.env"
-        mock_temp_context = Mock()
-        mock_temp_context.name = temp_path
-        mock_temp_file.return_value.__enter__.return_value = mock_temp_context
-        
-        mock_getpass.return_value = "test-password"
-        
-        # Mock environment variables after decryption
-        env_vars = {
-            "WIKIJS_URL": "https://encrypted-wiki.com",
-            "WIKIJS_API_KEY": "encrypted-key-123"
-        }
-        
-        with patch.dict(os.environ, env_vars), \
-             patch('os.path.exists', side_effect=lambda path: path == temp_path):
-            
-            config = WikiJSConfig.load_config(env_file)
-        
-        assert config.url == "https://encrypted-wiki.com"
-        assert config.api_key == "encrypted-key-123"
-        
-        # Verify encryption methods were called
-        mock_encryption.decrypt_env_file.assert_called_with("test-password", temp_decrypt=True)
-        mock_load_dotenv.assert_called_with(temp_path)
-        mock_remove.assert_called_with(temp_path)
-    
-    @patch('wikijs_mcp.config.EnvEncryption')
-    @patch('getpass.getpass')
-    def test_load_config_decryption_failure(self, mock_getpass, mock_encryption_class, temp_dir):
-        """Test config loading when decryption fails."""
-        env_file = os.path.join(temp_dir, ".env")
-        
-        # Mock encryption instance that fails to decrypt
-        mock_encryption = Mock()
-        mock_encryption.has_encrypted_env.return_value = True
-        mock_encryption.decrypt_env_file.return_value = False
-        mock_encryption_class.return_value = mock_encryption
-        
-        mock_getpass.return_value = "wrong-password"
-        
-        with patch('os.path.exists', return_value=False):
-            with pytest.raises(ValueError, match="Failed to decrypt configuration file"):
-                WikiJSConfig.load_config(env_file)
-    
-    @patch('wikijs_mcp.config.EnvEncryption')
-    def test_load_config_no_files_exist(self, mock_encryption_class, temp_dir, capsys):
+    def test_load_config_no_files_exist(self, temp_dir, capsys):
         """Test config loading when no config files exist."""
         env_file = os.path.join(temp_dir, ".env")
-        
-        # Mock encryption instance with no encrypted file
-        mock_encryption = Mock()
-        mock_encryption.has_encrypted_env.return_value = False
-        mock_encryption_class.return_value = mock_encryption
         
         with patch('os.path.exists', return_value=False):
             config = WikiJSConfig.load_config(env_file)
@@ -192,7 +125,6 @@ class TestWikiJSConfig:
         # Should print helpful message
         captured = capsys.readouterr()
         assert "No configuration found" in captured.out
-        assert "wikijs-env setup" in captured.out
     
     @pytest.mark.parametrize("debug_value,expected", [
         ("true", True),

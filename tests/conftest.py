@@ -5,7 +5,6 @@ import tempfile
 import pytest
 from unittest.mock import Mock, patch
 from wikijs_mcp.config import WikiJSConfig
-from wikijs_mcp.crypto import EnvEncryption
 
 
 @pytest.fixture
@@ -48,13 +47,6 @@ def mock_wiki_config():
         graphql_endpoint="/graphql",
         debug=True
     )
-
-
-@pytest.fixture
-def encryption_instance(temp_dir):
-    """Create an EnvEncryption instance with temp directory."""
-    env_path = os.path.join(temp_dir, ".env")
-    return EnvEncryption(env_path)
 
 
 @pytest.fixture
@@ -117,14 +109,6 @@ def sample_page_data():
             {"tag": "documentation"}
         ]
     }
-
-
-@pytest.fixture
-def mock_getpass():
-    """Mock getpass for password input."""
-    with patch('getpass.getpass') as mock_getpass:
-        mock_getpass.return_value = "test-password-123"
-        yield mock_getpass
 
 
 @pytest.fixture(autouse=True)

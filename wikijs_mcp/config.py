@@ -1,12 +1,9 @@
 """Configuration management for WikiJS MCP Server."""
 
 import os
-import getpass
-import tempfile
 from typing import Optional
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
-from .crypto import EnvEncryption
 
 
 class WikiJSConfig(BaseModel):
@@ -19,39 +16,11 @@ class WikiJSConfig(BaseModel):
     
     @classmethod
     def load_config(cls, env_file: str = ".env") -> "WikiJSConfig":
-        """Load configuration from .env file (encrypted or plain)."""
-        encryption = EnvEncryption(env_file)
-        
-        # Try to load from regular .env first
+        """Load configuration from .env file."""
         if os.path.exists(env_file):
             load_dotenv(env_file)
-        elif encryption.has_encrypted_env():
-            # Load from encrypted file
-            password = getpass.getpass("Enter password to decrypt configuration: ")
-            
-            # Create temporary file for decryption
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.env', delete=False) as temp_file:
-                temp_path = temp_file.name
-            
-            try:
-                # Temporarily decrypt to temp file
-                original_path = encryption.env_path
-                encryption.env_path = temp_path
-                
-                if not encryption.decrypt_env_file(password, temp_decrypt=True):
-                    raise ValueError("Failed to decrypt configuration file")
-                
-                # Load from temp file
-                load_dotenv(temp_path)
-                
-            finally:
-                # Clean up temp file
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
-                encryption.env_path = original_path
         else:
-            # No configuration found
-            print("No configuration found. Run 'wikijs-env setup' to create encrypted config.")
+            print(f"No configuration found at {env_file}. Please create a .env file with your WikiJS settings.")
         
         return cls(
             url=os.getenv("WIKIJS_URL", ""),
@@ -76,6 +45,6 @@ class WikiJSConfig(BaseModel):
     def validate_config(self) -> None:
         """Validate that required configuration is present."""
         if not self.url:
-            raise ValueError("WIKIJS_URL must be set. Run 'wikijs-env setup' to configure.")
+            raise ValueError("WIKIJS_URL must be set in your .env file.")
         if not self.api_key:
-            raise ValueError("WIKIJS_API_KEY must be set. Run 'wikijs-env setup' to configure.")
+            raise ValueError("WIKIJS_API_KEY must be set in your .env file.")

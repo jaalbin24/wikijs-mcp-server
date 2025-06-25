@@ -33,53 +33,13 @@ cp .env.example .env
 
 ## Configuration
 
-### 🔐 Secure Configuration with Encryption
+Create a `.env` file with your Wiki.js configuration:
 
-This project uses **password-based encryption** to protect your API keys and sensitive configuration.
-
-#### Quick Setup
-
-Run the interactive setup command:
-```bash
-wikijs-env setup
-```
-
-This will:
-1. Prompt for your Wiki.js URL and API key
-2. Create an encrypted `.env.encrypted` file  
-3. Delete the plaintext `.env` file for security
-
-#### Manual Configuration
-
-1. Create a `.env` file:
 ```env
 WIKIJS_URL=https://your-wiki.example.com
 WIKIJS_API_KEY=your_api_key_here
 WIKIJS_GRAPHQL_ENDPOINT=/graphql  # Optional, defaults to /graphql
 DEBUG=false  # Optional, enables debug logging
-```
-
-2. Encrypt it:
-```bash
-wikijs-env encrypt
-```
-
-3. Delete the original `.env` file when prompted
-
-#### Environment Management Commands
-
-```bash
-# Check status of configuration files
-wikijs-env status
-
-# Edit encrypted configuration (decrypts, opens editor, re-encrypts)
-wikijs-env edit
-
-# Decrypt configuration (creates .env file)
-wikijs-env decrypt
-
-# Encrypt configuration (creates .env.encrypted file)
-wikijs-env encrypt
 ```
 
 ### Getting Wiki.js API Key
@@ -89,7 +49,7 @@ wikijs-env encrypt
 3. Enable the API if not already enabled
 4. Click **New API Key**
 5. Set appropriate permissions for your use case
-6. Use the key when running `wikijs-env setup`
+6. Add the key to your `.env` file
 
 ## Usage
 
@@ -97,10 +57,7 @@ wikijs-env encrypt
 
 #### Quick Start with Docker
 
-1. **Setup encrypted configuration:**
-```bash
-docker compose run --rm wikijs-mcp-server setup
-```
+1. **Create your `.env` file** in the `config/` directory with your WikiJS settings
 
 2. **Start the server:**
 ```bash
@@ -115,17 +72,8 @@ docker compose logs -f wikijs-mcp-server
 #### Docker Management Commands
 
 ```bash
-# Setup encrypted configuration interactively
-docker compose run --rm wikijs-mcp-server setup
-
 # Start server in background
 docker compose up -d wikijs-mcp-server
-
-# Edit encrypted configuration
-docker-compose run --rm wikijs-mcp-server edit
-
-# Check configuration status
-docker-compose run --rm wikijs-mcp-server status
 
 # Access interactive shell
 docker-compose run --rm wikijs-mcp-server bash
@@ -174,8 +122,6 @@ Add to your Claude Code MCP configuration:
   }
 }
 ```
-
-**Note**: The server will automatically prompt for your password to decrypt the configuration when it starts.
 
 ## Available Tools
 
@@ -242,7 +188,6 @@ pytest --cov=wikijs_mcp --cov-report=html
 # Run specific test categories
 pytest -m unit          # Unit tests only
 pytest -m integration   # Integration tests only
-pytest -m crypto        # Cryptography tests only
 
 # Run tests in parallel (faster)
 pytest -n auto
@@ -252,7 +197,6 @@ pytest -n auto
 
 - **Unit tests** (`-m unit`): Fast, isolated component tests
 - **Integration tests** (`-m integration`): Full MCP server functionality tests  
-- **Crypto tests** (`-m crypto`): Encryption/decryption functionality
 - **Network tests** (`-m network`): Tests requiring network access (skipped by default)
 
 ### Code Quality
@@ -289,17 +233,6 @@ The project uses GitHub Actions for:
 - ✅ **Security scanning** (bandit, safety)
 - ✅ **Docker build testing**
 - ✅ **Coverage reporting** (Codecov)
-
-## Security Features
-
-- **Password-based encryption** using PBKDF2 with SHA-256
-- **100,000 iterations** for key derivation (industry standard)
-- **Random salt** generation for each encryption
-- **Fernet encryption** (AES 128 in CBC mode with HMAC authentication)
-- **Secure temp file handling** for decryption operations
-- **Automatic cleanup** of temporary files
-
-Your API keys are never stored in plaintext after initial setup.
 
 ## Requirements
 
