@@ -1,8 +1,6 @@
 # Docker Compose Override Example
 # Copy this to docker-compose.override.yml and customize as needed
 
-version: '3.8'
-
 services:
   wikijs-mcp-server:
     # Custom build context if needed
