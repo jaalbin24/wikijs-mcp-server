@@ -134,8 +134,8 @@ Get a specific page by path or ID.
 - **Parameters**: `path` (string) OR `id` (integer)
 
 ### `wiki_list_pages`
-List all pages with pagination.
-- **Parameters**: `limit` (optional integer), `offset` (optional integer)
+List all pages.
+- **Parameters**: `limit` (optional integer)
 
 ### `wiki_get_tree`
 Get wiki page tree structure.

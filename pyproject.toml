@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "wikijs-mcp-server"
 version = "0.1.0"
 description = "MCP server for Wiki.js integration"
-authors = [{name = "Jeremy Albin"}]
+authors = []
 dependencies = [
     "mcp>=1.0.0",
     "httpx>=0.25.0",
