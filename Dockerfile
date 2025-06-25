@@ -27,7 +27,7 @@ COPY pyproject.toml ./
 COPY wikijs_mcp/__init__.py ./wikijs_mcp/
 
 # Install Python dependencies
-RUN pip install -e .
+RUN pip install -e .[dev]
 
 # Copy application code
 COPY . .

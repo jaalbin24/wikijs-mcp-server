@@ -40,10 +40,10 @@ case "$1" in
             print_success "Found encrypted configuration"
         elif [ -f "$ENV_FILE" ]; then
             print_warning "Found unencrypted configuration"
-            echo "Consider encrypting it with: docker-compose run --rm wikijs-mcp-server encrypt"
+            echo "Consider encrypting it with: docker compose run --rm wikijs-mcp-server encrypt"
         else
             print_error "No configuration found!"
-            echo "Run setup with: docker-compose run --rm wikijs-mcp-server setup"
+            echo "Run setup with: docker compose run --rm wikijs-mcp-server setup"
             exit 1
         fi
         
@@ -92,6 +92,12 @@ case "$1" in
         exec /bin/sh
         ;;
     
+    "test")
+        print_info "Running tests..."
+        cd /app
+        exec python3 -m pytest tests/
+        ;;
+    
     *)
         print_error "Unknown command: $1"
         echo ""
@@ -102,13 +108,14 @@ case "$1" in
         echo "  decrypt  - Decrypt .env.encrypted file"
         echo "  edit     - Edit encrypted configuration"
         echo "  status   - Show configuration status"
+        echo "  test     - Run test suite"
         echo "  bash     - Interactive bash shell"
         echo "  sh       - Interactive shell"
         echo ""
         echo "Examples:"
-        echo "  docker-compose run --rm wikijs-mcp-server setup"
-        echo "  docker-compose run --rm wikijs-mcp-server encrypt"
-        echo "  docker-compose up wikijs-mcp-server"
+        echo "  docker compose run --rm wikijs-mcp-server setup"
+        echo "  docker compose run --rm wikijs-mcp-server encrypt"
+        echo "  docker compose up wikijs-mcp-server"
         exit 1
         ;;
 esac

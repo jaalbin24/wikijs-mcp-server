@@ -8,7 +8,6 @@ from wikijs_mcp.config import WikiJSConfig
 
 
 @pytest.mark.unit
-@pytest.mark.asyncio
 class TestWikiJSClient:
     """Test cases for WikiJSClient class."""
     

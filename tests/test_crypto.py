@@ -125,10 +125,12 @@ class TestEnvEncryption:
     
     @patch('os.system')
     @patch('os.path.exists')
-    def test_edit_env_file_success(self, mock_exists, mock_system, temp_env_file, mock_getpass):
+    @patch('builtins.input', return_value='n')  # Don't delete original file
+    def test_edit_env_file_success(self, mock_input, mock_exists, mock_system, temp_env_file, mock_getpass):
         """Test successful editing of encrypted env file."""
         mock_system.return_value = 0  # Success exit code
         mock_exists.return_value = True
+        mock_getpass.return_value = "test-password"  # Use same password for both encrypt and edit
         encryption = EnvEncryption(temp_env_file)
         
         # Encrypt the file first
@@ -219,7 +221,8 @@ class TestEnvEncryption:
             result = encryption.encrypt_env_file()
             assert result is expected
     
-    def test_encrypt_decrypt_roundtrip(self, temp_env_file, sample_env_content):
+    @patch('builtins.input', return_value='n')  # Don't delete original file
+    def test_encrypt_decrypt_roundtrip(self, mock_input, temp_env_file, sample_env_content):
         """Test full encrypt-decrypt roundtrip preserves content."""
         encryption = EnvEncryption(temp_env_file)
         password = "test-password-123"

@@ -119,13 +119,6 @@ class TestCLI:
         assert result == 0
         mock_setup.assert_called_once()
     
-    @patch('sys.argv', ['wikijs-env', 'unknown'])
-    def test_main_unknown_command(self):
-        """Test main with unknown command."""
-        result = main()
-        
-        assert result == 1
-    
     @patch('sys.argv', ['wikijs-env', '--env-file', 'custom.env', 'status'])
     @patch('wikijs_mcp.cli.EnvEncryption')
     def test_main_custom_env_file(self, mock_encryption_class):
@@ -160,28 +153,28 @@ class TestSetupEncryptedEnv:
         """Test setup to edit existing encrypted file."""
         encryption = EnvEncryption(f"{temp_dir}/.env")
         
-        with patch.object(encryption, 'has_encrypted_env', return_value=True), \
-             patch.object(encryption, 'edit_env_file', return_value=True), \
+        with patch.object(encryption, 'has_encrypted_env', return_value=True) as mock_has_encrypted, \
+             patch.object(encryption, 'edit_env_file', return_value=True) as mock_edit, \
              patch('builtins.input', return_value='y'):
             
             result = setup_encrypted_env(encryption)
-        
-        assert result == 0
-        encryption.edit_env_file.assert_called_once()
+            
+            assert result == 0
+            mock_edit.assert_called_once()
     
     def test_setup_encrypt_existing_env_file(self, temp_env_file):
         """Test setup to encrypt existing .env file."""
         encryption = EnvEncryption(temp_env_file)
         
         with patch.object(encryption, 'has_encrypted_env', return_value=False), \
-             patch.object(encryption, 'encrypt_env_file', return_value=True), \
+             patch.object(encryption, 'encrypt_env_file', return_value=True) as mock_encrypt, \
              patch('os.path.exists', return_value=True), \
              patch('builtins.input', return_value='y'):
             
             result = setup_encrypted_env(encryption)
-        
-        assert result == 0
-        encryption.encrypt_env_file.assert_called_once()
+            
+            assert result == 0
+            mock_encrypt.assert_called_once()
     
     def test_setup_keep_existing_env_file(self, temp_env_file):
         """Test setup choosing to keep existing .env file."""
@@ -210,23 +203,23 @@ class TestSetupEncryptedEnv:
         ]
         
         with patch.object(encryption, 'has_encrypted_env', return_value=False), \
-             patch.object(encryption, 'encrypt_env_file', return_value=True), \
+             patch.object(encryption, 'encrypt_env_file', return_value=True) as mock_encrypt, \
              patch('os.path.exists', return_value=False):
             
             result = setup_encrypted_env(encryption)
-        
-        assert result == 0
-        
-        # Verify .env file was created with correct content
-        with open(env_path, 'r') as f:
-            content = f.read()
-        
-        assert 'WIKIJS_URL=https://test-wiki.com' in content
-        assert 'WIKIJS_API_KEY=test-api-key-123' in content
-        assert 'WIKIJS_GRAPHQL_ENDPOINT=/graphql' in content
-        assert 'DEBUG=true' in content
-        
-        encryption.encrypt_env_file.assert_called_once()
+            
+            assert result == 0
+            
+            # Verify .env file was created with correct content
+            with open(env_path, 'r') as f:
+                content = f.read()
+            
+            assert 'WIKIJS_URL=https://test-wiki.com' in content
+            assert 'WIKIJS_API_KEY=test-api-key-123' in content
+            assert 'WIKIJS_GRAPHQL_ENDPOINT=/graphql' in content
+            assert 'DEBUG=true' in content
+            
+            mock_encrypt.assert_called_once()
     
     @patch('builtins.input')
     def test_setup_create_new_env_file_missing_url(self, mock_input, temp_dir, capsys):

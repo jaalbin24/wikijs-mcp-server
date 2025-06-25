@@ -142,7 +142,7 @@ class TestWikiJSConfig:
         }
         
         with patch.dict(os.environ, env_vars), \
-             patch('os.path.exists', return_value=False):
+             patch('os.path.exists', side_effect=lambda path: path == temp_path):
             
             config = WikiJSConfig.load_config(env_file)
         

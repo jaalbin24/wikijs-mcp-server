@@ -99,27 +99,27 @@ wikijs-env encrypt
 
 1. **Setup encrypted configuration:**
 ```bash
-docker-compose run --rm wikijs-mcp-server setup
+docker compose run --rm wikijs-mcp-server setup
 ```
 
 2. **Start the server:**
 ```bash
-docker-compose up -d wikijs-mcp-server
+docker compose up -d wikijs-mcp-server
 ```
 
 3. **View logs:**
 ```bash
-docker-compose logs -f wikijs-mcp-server
+docker compose logs -f wikijs-mcp-server
 ```
 
 #### Docker Management Commands
 
 ```bash
 # Setup encrypted configuration interactively
-docker-compose run --rm wikijs-mcp-server setup
+docker compose run --rm wikijs-mcp-server setup
 
 # Start server in background
-docker-compose up -d wikijs-mcp-server
+docker compose up -d wikijs-mcp-server
 
 # Edit encrypted configuration
 docker-compose run --rm wikijs-mcp-server edit
@@ -131,7 +131,7 @@ docker-compose run --rm wikijs-mcp-server status
 docker-compose run --rm wikijs-mcp-server bash
 
 # Stop server
-docker-compose down
+docker compose down
 ```
 
 #### Docker with Claude Code
@@ -277,7 +277,7 @@ safety check
 
 Test the Docker build:
 ```bash
-docker-compose build
+docker compose build
 docker-compose run --rm wikijs-mcp-server bash
 ```
 
