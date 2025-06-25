@@ -221,25 +221,74 @@ Update an existing wiki page.
 
 ## Development
 
+### Setup Development Environment
+
 Install development dependencies:
 ```bash
 pip install -e ".[dev]"
 ```
 
-Run tests:
+### Testing
+
+The project has comprehensive test coverage with pytest:
+
 ```bash
+# Run all tests
 pytest
+
+# Run with coverage report
+pytest --cov=wikijs_mcp --cov-report=html
+
+# Run specific test categories
+pytest -m unit          # Unit tests only
+pytest -m integration   # Integration tests only
+pytest -m crypto        # Cryptography tests only
+
+# Run tests in parallel (faster)
+pytest -n auto
 ```
+
+### Test Categories
+
+- **Unit tests** (`-m unit`): Fast, isolated component tests
+- **Integration tests** (`-m integration`): Full MCP server functionality tests  
+- **Crypto tests** (`-m crypto`): Encryption/decryption functionality
+- **Network tests** (`-m network`): Tests requiring network access (skipped by default)
+
+### Code Quality
 
 Format code:
 ```bash
-black wikijs_mcp/
+black wikijs_mcp/ tests/
 ```
 
 Type checking:
 ```bash
 mypy wikijs_mcp/
 ```
+
+Security scanning:
+```bash
+bandit -r wikijs_mcp/
+safety check
+```
+
+### Docker Testing
+
+Test the Docker build:
+```bash
+docker-compose build
+docker-compose run --rm wikijs-mcp-server bash
+```
+
+### CI/CD
+
+The project uses GitHub Actions for:
+- ✅ **Multi-Python testing** (3.8-3.12)
+- ✅ **Code quality checks** (black, mypy)
+- ✅ **Security scanning** (bandit, safety)
+- ✅ **Docker build testing**
+- ✅ **Coverage reporting** (Codecov)
 
 ## Security Features
 
