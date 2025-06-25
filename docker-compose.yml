@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  wikijs-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wikijs-mcp-server
+    restart: unless-stopped
+    
+    # Interactive mode for password input
+    stdin_open: true
+    tty: true
+    
+    # Mount config directory for persistent encrypted config
+    volumes:
+      - ./config:/app/config
+      - wikijs-mcp-data:/app/data
+    
+    # Environment variables (optional overrides)
+    environment:
+      - DEBUG=false
+      - WIKIJS_GRAPHQL_ENDPOINT=/graphql
+    
+    # Network configuration for MCP
+    networks:
+      - wikijs-mcp-network
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import wikijs_mcp; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+
+  # Optional: Setup service for initial configuration
+  wikijs-mcp-setup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wikijs-mcp-setup
+    
+    # Interactive mode for setup
+    stdin_open: true
+    tty: true
+    
+    # Mount config directory
+    volumes:
+      - ./config:/app/config
+    
+    # Override command for setup
+    command: ["setup"]
+    
+    # Only run when needed
+    profiles:
+      - setup
+    
+    networks:
+      - wikijs-mcp-network
+
+volumes:
+  wikijs-mcp-data:
+    driver: local
+
+networks:
+  wikijs-mcp-network:
+    driver: bridge

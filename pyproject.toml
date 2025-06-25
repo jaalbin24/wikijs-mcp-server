@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wikijs-mcp-server"
+version = "0.1.0"
+description = "MCP server for Wiki.js integration"
+authors = [{name = "Jeremy Albin"}]
+dependencies = [
+    "mcp>=1.0.0",
+    "httpx>=0.25.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.0.0",
+    "cryptography>=41.0.0",
+    "getpass4>=0.0.14.2",
+]
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+wikijs-mcp-server = "wikijs_mcp.server:main"
+wikijs-env = "wikijs_mcp.cli:main"
