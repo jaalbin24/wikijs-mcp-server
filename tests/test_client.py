@@ -196,7 +196,6 @@ class TestWikiJSClient:
                         "description": "First page",
                         "updatedAt": "2024-01-01T00:00:00Z",
                         "createdAt": "2024-01-01T00:00:00Z",
-                        "author": {"name": "User 1"},
                         "locale": "en"
                     }
                 ]
@@ -205,14 +204,14 @@ class TestWikiJSClient:
         
         client._execute_query = AsyncMock(return_value=pages_response)
         
-        result = await client.list_pages(25, 10)
+        result = await client.list_pages(25)
         
         assert len(result) == 1
         assert result[0]["title"] == "Page 1"
         
         # Verify correct parameters
         call_args = client._execute_query.call_args
-        assert call_args[0][1] == {"limit": 25, "offset": 10}
+        assert call_args[0][1] == {"limit": 25}
     
     async def test_get_page_tree_success(self, mock_wiki_config):
         """Test successful get page tree."""

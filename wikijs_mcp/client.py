@@ -136,25 +136,22 @@ class WikiJSClient:
     async def list_pages(self, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         """List all pages with pagination."""
         graphql_query = """
-        query ListPages($limit: Int!, $offset: Int!) {
+        query ListPages($limit: Int!) {
             pages {
-                list(limit: $limit, offset: $offset) {
+                list(limit: $limit) {
                     id
                     path
                     title
                     description
                     updatedAt
                     createdAt
-                    author {
-                        name
-                    }
                     locale
                 }
             }
         }
         """
         
-        result = await self._execute_query(graphql_query, {"limit": limit, "offset": offset})
+        result = await self._execute_query(graphql_query, {"limit": limit})
         return result.get("pages", {}).get("list", [])
     
     async def get_page_tree(self, parent_path: str = "", mode: str = "PATH") -> List[Dict[str, Any]]:

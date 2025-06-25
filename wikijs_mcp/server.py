@@ -42,7 +42,16 @@ class WikiJSMCPServer:
     
     async def _handle_wiki_get_page(self, client: WikiJSClient, arguments: Dict[str, Any]) -> str:
         """Handle get page requests."""
-        if "path" in arguments:
+        # Validate that exactly one of path or id is provided
+        has_path = "path" in arguments
+        has_id = "id" in arguments
+        
+        if not has_path and not has_id:
+            raise ValueError("Either 'path' or 'id' parameter is required")
+        if has_path and has_id:
+            raise ValueError("Cannot specify both 'path' and 'id' parameters - use only one")
+        
+        if has_path:
             page = await client.get_page_by_path(arguments["path"])
         else:
             page = await client.get_page_by_id(arguments["id"])
@@ -72,20 +81,17 @@ class WikiJSMCPServer:
     async def _handle_wiki_list_pages(self, client: WikiJSClient, arguments: Dict[str, Any]) -> str:
         """Handle list pages requests."""
         limit = arguments.get("limit", 50)
-        offset = arguments.get("offset", 0)
-        pages = await client.list_pages(limit, offset)
+        pages = await client.list_pages(limit)
         
         if not pages:
             return "No pages found"
         
-        response = f"Found {len(pages)} pages (offset: {offset}, limit: {limit}):\n\n"
+        response = f"Found {len(pages)} pages (limit: {limit}):\n\n"
         for page in pages:
             response += f"**{page['title']}**\n"
             response += f"Path: {page['path']} (ID: {page['id']})\n"
             if page.get('description'):
                 response += f"Description: {page['description']}\n"
-            if page.get('author'):
-                response += f"Author: {page['author'].get('name', 'Unknown')}\n"
             response += f"Updated: {page['updatedAt']}\n\n"
         
         return response
@@ -191,22 +197,19 @@ class WikiJSMCPServer:
                         "properties": {
                             "path": {
                                 "type": "string",
-                                "description": "Page path (e.g., 'docs/getting-started')"
+                                "description": "Page path (e.g., 'docs/getting-started'). Use either path OR id, not both."
                             },
                             "id": {
                                 "type": "integer",
-                                "description": "Page ID"
+                                "description": "Page ID. Use either path OR id, not both."
                             }
                         },
-                        "oneOf": [
-                            {"required": ["path"]},
-                            {"required": ["id"]}
-                        ]
+                        "required": []
                     }
                 ),
                 Tool(
                     name="wiki_list_pages",
-                    description="List all pages with pagination",
+                    description="List all pages",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -214,11 +217,6 @@ class WikiJSMCPServer:
                                 "type": "integer",
                                 "description": "Number of pages to return (default: 50)",
                                 "default": 50
-                            },
-                            "offset": {
-                                "type": "integer",
-                                "description": "Number of pages to skip (default: 0)",
-                                "default": 0
                             }
                         }
                     }

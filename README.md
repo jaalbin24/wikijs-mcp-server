@@ -76,7 +76,7 @@ docker compose logs -f wikijs-mcp-server
 docker compose up -d wikijs-mcp-server
 
 # Access interactive shell
-docker-compose run --rm wikijs-mcp-server bash
+docker compose run --rm wikijs-mcp-server bash
 
 # Stop server
 docker compose down
@@ -222,7 +222,7 @@ safety check
 Test the Docker build:
 ```bash
 docker compose build
-docker-compose run --rm wikijs-mcp-server bash
+docker compose run --rm wikijs-mcp-server bash
 ```
 
 ### CI/CD
