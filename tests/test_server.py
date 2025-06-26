@@ -89,14 +89,20 @@ class TestWikiJSMCPServer:
 
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     @patch('wikijs_mcp.server.WikiJSClient')
-    async def test_call_tool_search_with_description(self, mock_client_class, mock_load_config, mock_wiki_config):
-        """Test calling search tool with page description."""
+    async def test_call_tool_search_with_new_response_format(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test calling search tool with new response format including locale and ID."""
         mock_load_config.return_value = mock_wiki_config
         mock_client_instance = AsyncMock()
         mock_client_instance.__aenter__.return_value = mock_client_instance
         mock_client_instance.__aexit__.return_value = None
         mock_client_instance.search_pages.return_value = [
-            {"title": "Test Page", "path": "/test", "description": "Test description", "updatedAt": "2023-01-01"}
+            {
+                "id": "123",
+                "title": "Test Page", 
+                "path": "/test", 
+                "description": "Test description", 
+                "locale": "en"
+            }
         ]
         mock_client_class.return_value = mock_client_instance
         
@@ -105,6 +111,8 @@ class TestWikiJSMCPServer:
         result = await server.app.call_tool("wiki_search", {"query": "test", "limit": 10})
         assert len(result) == 1
         assert "Test description" in result[0].text
+        assert "Locale: en" in result[0].text
+        assert "ID: 123" in result[0].text
 
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     @patch('wikijs_mcp.server.WikiJSClient')
@@ -126,6 +134,33 @@ class TestWikiJSMCPServer:
         assert len(result) == 1
         assert "Test Page" in result[0].text
         assert "Test content" in result[0].text
+        
+        # Verify default locale was used
+        mock_client_instance.get_page_by_path.assert_called_once_with("/test", "en")
+    
+    @patch('wikijs_mcp.server.WikiJSConfig.load_config')
+    @patch('wikijs_mcp.server.WikiJSClient')
+    async def test_call_tool_get_page_by_path_with_locale(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test calling get_page tool with path and custom locale."""
+        mock_load_config.return_value = mock_wiki_config
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        mock_client_instance.__aexit__.return_value = None
+        mock_client_instance.get_page_by_path.return_value = {
+            "id": 1, "title": "Page Française", "path": "/test-fr", "content": "Contenu français",
+            "locale": "fr", "createdAt": "2023-01-01", "updatedAt": "2023-01-02"
+        }
+        mock_client_class.return_value = mock_client_instance
+        
+        server = WikiJSMCPServer()
+        
+        result = await server.app.call_tool("wiki_get_page", {"path": "/test-fr", "locale": "fr"})
+        assert len(result) == 1
+        assert "Page Française" in result[0].text
+        assert "Contenu français" in result[0].text
+        
+        # Verify custom locale was used
+        mock_client_instance.get_page_by_path.assert_called_once_with("/test-fr", "fr")
 
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     @patch('wikijs_mcp.server.WikiJSClient')
@@ -184,8 +219,8 @@ class TestWikiJSMCPServer:
 
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     @patch('wikijs_mcp.server.WikiJSClient')
-    async def test_call_tool_get_page_with_metadata(self, mock_client_class, mock_load_config, mock_wiki_config):
-        """Test get_page tool with full metadata."""
+    async def test_call_tool_get_page_with_enhanced_metadata(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test get_page tool with enhanced metadata format."""
         mock_load_config.return_value = mock_wiki_config
         mock_client_instance = AsyncMock()
         mock_client_instance.__aenter__.return_value = mock_client_instance
@@ -193,7 +228,8 @@ class TestWikiJSMCPServer:
         mock_client_instance.get_page_by_path.return_value = {
             "id": 1, "title": "Test Page", "path": "/test", "content": "Test content",
             "description": "Test description", "editor": "markdown", "locale": "en",
-            "author": {"name": "Test Author"}, "tags": [{"tag": "test"}, {"tag": "example"}],
+            "authorName": "Test Author",  # Updated from nested author object
+            "tags": [{"tag": "test", "title": "Test Tag"}, {"tag": "example", "title": "Example Tag"}],
             "createdAt": "2023-01-01", "updatedAt": "2023-01-02"
         }
         mock_client_class.return_value = mock_client_instance
@@ -204,6 +240,7 @@ class TestWikiJSMCPServer:
         assert len(result) == 1
         assert "Test description" in result[0].text
         assert "Test Author" in result[0].text
+        # Should handle both tag formats (tag and title)
         assert "test, example" in result[0].text
 
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
@@ -265,7 +302,7 @@ class TestWikiJSMCPServer:
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     @patch('wikijs_mcp.server.WikiJSClient')
     async def test_call_tool_get_tree(self, mock_client_class, mock_load_config, mock_wiki_config):
-        """Test calling get_tree tool."""
+        """Test calling get_tree tool with enhanced parameters."""
         mock_load_config.return_value = mock_wiki_config
         mock_client_instance = AsyncMock()
         mock_client_instance.__aenter__.return_value = mock_client_instance
@@ -282,6 +319,37 @@ class TestWikiJSMCPServer:
         assert len(result) == 1
         assert "📁 Folder/" in result[0].text
         assert "📄 Page" in result[0].text
+        
+        # Verify default parameters were used
+        mock_client_instance.get_page_tree.assert_called_once_with("", "ALL", "en", None)
+    
+    @patch('wikijs_mcp.server.WikiJSConfig.load_config')
+    @patch('wikijs_mcp.server.WikiJSClient')
+    async def test_call_tool_get_tree_with_all_parameters(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test calling get_tree tool with all parameters."""
+        mock_load_config.return_value = mock_wiki_config
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        mock_client_instance.__aexit__.return_value = None
+        mock_client_instance.get_page_tree.return_value = [
+            {"title": "Advanced Folder", "isFolder": True, "depth": 0},
+        ]
+        mock_client_class.return_value = mock_client_instance
+        
+        server = WikiJSMCPServer()
+        
+        result = await server.app.call_tool("wiki_get_tree", {
+            "parent_path": "docs/advanced",
+            "mode": "FOLDERS", 
+            "locale": "fr",
+            "parent_id": 123
+        })
+        assert len(result) == 1
+        assert "Advanced Folder" in result[0].text
+        assert "(mode: FOLDERS)" in result[0].text
+        
+        # Verify all parameters were passed correctly
+        mock_client_instance.get_page_tree.assert_called_once_with("docs/advanced", "FOLDERS", "fr", 123)
 
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     @patch('wikijs_mcp.server.WikiJSClient')

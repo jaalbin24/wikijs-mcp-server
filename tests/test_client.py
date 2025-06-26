@@ -1,7 +1,7 @@
 """Tests for WikiJS GraphQL client."""
 
 import pytest
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import Mock, AsyncMock, patch
 import httpx
 from wikijs_mcp.client import WikiJSClient
 from wikijs_mcp.config import WikiJSConfig
@@ -95,7 +95,7 @@ class TestWikiJSClient:
             await client._execute_query("query { test }")
     
     async def test_search_pages_success(self, mock_wiki_config):
-        """Test successful page search."""
+        """Test successful page search with new GraphQL schema."""
         client = WikiJSClient(mock_wiki_config)
         
         search_response = {
@@ -103,14 +103,14 @@ class TestWikiJSClient:
                 "search": {
                     "results": [
                         {
-                            "id": 1,
+                            "id": "1",
                             "path": "docs/test",
                             "title": "Test Page",
                             "description": "Test description",
-                            "updatedAt": "2024-01-01T00:00:00Z",
-                            "createdAt": "2024-01-01T00:00:00Z"
+                            "locale": "en"
                         }
-                    ]
+                    ],
+                    "totalHits": 1
                 }
             }
         }
@@ -121,11 +121,112 @@ class TestWikiJSClient:
         
         assert len(results) == 1
         assert results[0]["title"] == "Test Page"
+        assert results[0]["id"] == "1"
+        assert results[0]["locale"] == "en"
         
-        # Verify correct query and variables were used
+        # Verify correct query and variables were used with new schema
         call_args = client._execute_query.call_args
         assert "SearchPages" in call_args[0][0]
-        assert call_args[0][1] == {"query": "test query", "limit": 5}
+        expected_vars = {"query": "test query", "path": "", "locale": "en"}
+        assert call_args[0][1] == expected_vars
+    
+    async def test_search_pages_with_fallback(self, mock_wiki_config):
+        """Test search_pages fallback to list_pages when GraphQL search fails."""
+        client = WikiJSClient(mock_wiki_config)
+        
+        # Mock GraphQL search to fail
+        client._execute_query = AsyncMock(side_effect=Exception("GraphQL search failed"))
+        
+        # Mock list_pages response for fallback
+        list_pages_response = [
+            {
+                "id": 1,
+                "path": "docs/test",
+                "title": "Test Page Title",
+                "description": "Test description",
+                "locale": "en"
+            },
+            {
+                "id": 2,
+                "path": "other/page",
+                "title": "Other Page",
+                "description": "Not matching",
+                "locale": "en"
+            }
+        ]
+        
+        with patch.object(client, 'list_pages', new_callable=AsyncMock) as mock_list:
+            mock_list.return_value = list_pages_response
+            
+            results = await client.search_pages("test", 10)
+            
+            # Should return only the matching page from fallback
+            assert len(results) == 1
+            assert results[0]["title"] == "Test Page Title"
+            assert results[0]["id"] == "1"  # Converted to string
+            assert results[0]["locale"] == "en"
+            
+            # Verify fallback was called
+            mock_list.assert_called_once_with(limit=1000)
+    
+    async def test_search_pages_fallback_limit_applied(self, mock_wiki_config):
+        """Test that limit is applied correctly in fallback mode."""
+        client = WikiJSClient(mock_wiki_config)
+        
+        # Mock GraphQL search to fail
+        client._execute_query = AsyncMock(side_effect=Exception("GraphQL search failed"))
+        
+        # Mock many matching pages for fallback
+        list_pages_response = [
+            {
+                "id": i,
+                "path": f"docs/test{i}",
+                "title": f"Test Page {i}",
+                "description": "Test description",
+                "locale": "en"
+            } for i in range(20)
+        ]
+        
+        with patch.object(client, 'list_pages', new_callable=AsyncMock) as mock_list:
+            mock_list.return_value = list_pages_response
+            
+            results = await client.search_pages("test", 5)
+            
+            # Should return only 5 results due to limit
+            assert len(results) == 5
+            for i, result in enumerate(results):
+                assert result["title"] == f"Test Page {i}"
+    
+    async def test_search_pages_graphql_limit_applied(self, mock_wiki_config):
+        """Test that limit is applied manually when GraphQL returns more results than requested."""
+        client = WikiJSClient(mock_wiki_config)
+        
+        # Mock GraphQL to return more results than requested
+        search_response = {
+            "pages": {
+                "search": {
+                    "results": [
+                        {
+                            "id": str(i),
+                            "path": f"docs/test{i}",
+                            "title": f"Test Page {i}",
+                            "description": "Test description",
+                            "locale": "en"
+                        } for i in range(20)
+                    ],
+                    "totalHits": 20
+                }
+            }
+        }
+        
+        client._execute_query = AsyncMock(return_value=search_response)
+        
+        results = await client.search_pages("test query", 5)
+        
+        # Should return only 5 results due to manual limit application
+        assert len(results) == 5
+        for i, result in enumerate(results):
+            assert result["title"] == f"Test Page {i}"
     
     async def test_search_pages_no_results(self, mock_wiki_config):
         """Test page search with no results."""
@@ -139,27 +240,62 @@ class TestWikiJSClient:
         assert results == []
     
     async def test_get_page_by_path_success(self, mock_wiki_config, sample_page_data):
-        """Test successful get page by path."""
+        """Test successful get page by path with singleByPath query."""
         client = WikiJSClient(mock_wiki_config)
         
-        page_response = {"pages": {"single": sample_page_data}}
+        # Update sample data to match new schema
+        enhanced_page_data = {
+            **sample_page_data,
+            "isPublished": True,
+            "isPrivate": False,
+            "authorId": 1,
+            "authorName": "Test Author",
+            "authorEmail": "test@example.com",
+            "creatorId": 1,
+            "creatorName": "Test Creator",
+            "creatorEmail": "creator@example.com",
+            "tags": [
+                {"id": 1, "tag": "test", "title": "Test Tag"},
+                {"id": 2, "tag": "example", "title": "Example Tag"}
+            ]
+        }
+        
+        page_response = {"pages": {"singleByPath": enhanced_page_data}}
         client._execute_query = AsyncMock(return_value=page_response)
         
         result = await client.get_page_by_path("docs/test-page")
         
-        assert result == sample_page_data
+        assert result == enhanced_page_data
         assert result["title"] == "Test Page"
+        assert result["isPublished"] is True
+        assert result["authorName"] == "Test Author"
         
-        # Verify correct query was used
+        # Verify correct query was used with new schema
         call_args = client._execute_query.call_args
         assert "GetPageByPath" in call_args[0][0]
-        assert call_args[0][1] == {"path": "docs/test-page"}
+        assert "singleByPath" in call_args[0][0]
+        assert call_args[0][1] == {"path": "docs/test-page", "locale": "en"}
+    
+    async def test_get_page_by_path_with_custom_locale(self, mock_wiki_config, sample_page_data):
+        """Test get page by path with custom locale."""
+        client = WikiJSClient(mock_wiki_config)
+        
+        page_response = {"pages": {"singleByPath": sample_page_data}}
+        client._execute_query = AsyncMock(return_value=page_response)
+        
+        result = await client.get_page_by_path("docs/test-page", locale="fr")
+        
+        assert result == sample_page_data
+        
+        # Verify correct locale was passed
+        call_args = client._execute_query.call_args
+        assert call_args[0][1] == {"path": "docs/test-page", "locale": "fr"}
     
     async def test_get_page_by_path_not_found(self, mock_wiki_config):
         """Test get page by path when page not found."""
         client = WikiJSClient(mock_wiki_config)
         
-        not_found_response = {"pages": {"single": None}}
+        not_found_response = {"pages": {"singleByPath": None}}
         client._execute_query = AsyncMock(return_value=not_found_response)
         
         result = await client.get_page_by_path("nonexistent")
@@ -214,7 +350,7 @@ class TestWikiJSClient:
         assert call_args[0][1] == {"limit": 25}
     
     async def test_get_page_tree_success(self, mock_wiki_config):
-        """Test successful get page tree."""
+        """Test successful get page tree with new schema."""
         client = WikiJSClient(mock_wiki_config)
         
         tree_response = {
@@ -223,9 +359,12 @@ class TestWikiJSClient:
                     {
                         "id": 1,
                         "path": "docs",
+                        "depth": 0,
                         "title": "Documentation",
+                        "isPrivate": False,
                         "isFolder": True,
-                        "parent": "",
+                        "privateNS": None,
+                        "parent": None,
                         "pageId": None,
                         "locale": "en"
                     }
@@ -235,17 +374,75 @@ class TestWikiJSClient:
         
         client._execute_query = AsyncMock(return_value=tree_response)
         
-        result = await client.get_page_tree("docs", "PATH")
+        result = await client.get_page_tree("docs", "ALL")
         
         assert len(result) == 1
         assert result[0]["isFolder"] is True
+        assert result[0]["depth"] == 0
+        assert result[0]["isPrivate"] is False
         
-        # Verify correct parameters
+        # Verify correct parameters with new schema
         call_args = client._execute_query.call_args
-        assert call_args[0][1] == {"parent": "docs", "mode": "PATH"}
+        expected_vars = {
+            "path": "docs",
+            "parent": None,
+            "mode": "ALL",
+            "locale": "en",
+            "includeAncestors": False
+        }
+        assert call_args[0][1] == expected_vars
+    
+    async def test_get_page_tree_with_all_parameters(self, mock_wiki_config):
+        """Test get page tree with all parameters specified."""
+        client = WikiJSClient(mock_wiki_config)
+        
+        tree_response = {"pages": {"tree": []}}
+        client._execute_query = AsyncMock(return_value=tree_response)
+        
+        result = await client.get_page_tree(
+            parent_path="docs/advanced",
+            mode="FOLDERS",
+            locale="fr",
+            parent_id=123
+        )
+        
+        assert result == []
+        
+        # Verify all parameters were passed correctly
+        call_args = client._execute_query.call_args
+        expected_vars = {
+            "path": "docs/advanced",
+            "parent": 123,
+            "mode": "FOLDERS",
+            "locale": "fr",
+            "includeAncestors": False
+        }
+        assert call_args[0][1] == expected_vars
+    
+    async def test_get_page_tree_default_parameters(self, mock_wiki_config):
+        """Test get page tree with default parameters."""
+        client = WikiJSClient(mock_wiki_config)
+        
+        tree_response = {"pages": {"tree": []}}
+        client._execute_query = AsyncMock(return_value=tree_response)
+        
+        result = await client.get_page_tree()
+        
+        assert result == []
+        
+        # Verify default parameters
+        call_args = client._execute_query.call_args
+        expected_vars = {
+            "path": None,
+            "parent": None,
+            "mode": "ALL",
+            "locale": "en",
+            "includeAncestors": False
+        }
+        assert call_args[0][1] == expected_vars
     
     async def test_create_page_success(self, mock_wiki_config):
-        """Test successful page creation."""
+        """Test successful page creation with new schema."""
         client = WikiJSClient(mock_wiki_config)
         
         create_response = {
@@ -279,12 +476,68 @@ class TestWikiJSClient:
         assert result["page"]["id"] == 123
         assert result["responseResult"]["succeeded"] is True
         
-        # Verify correct parameters
+        # Verify correct parameters with new schema
         call_args = client._execute_query.call_args
         variables = call_args[0][1]
-        assert variables["path"] == "docs/new-page"
-        assert variables["title"] == "New Page"
-        assert variables["tags"] == ["test", "new"]
+        expected_vars = {
+            "content": "# New Page\n\nContent here",
+            "description": "A new page",
+            "editor": "markdown",
+            "isPublished": True,
+            "isPrivate": False,
+            "locale": "en",
+            "path": "docs/new-page",
+            "tags": ["test", "new"],
+            "title": "New Page"
+        }
+        assert variables == expected_vars
+    
+    async def test_create_page_with_custom_parameters(self, mock_wiki_config):
+        """Test page creation with custom publication and privacy settings."""
+        client = WikiJSClient(mock_wiki_config)
+        
+        create_response = {
+            "pages": {
+                "create": {
+                    "responseResult": {
+                        "succeeded": True,
+                        "errorCode": None,
+                        "slug": "private-page",
+                        "message": "Page created successfully"
+                    },
+                    "page": {
+                        "id": 124,
+                        "path": "private/page",
+                        "title": "Private Page"
+                    }
+                }
+            }
+        }
+        
+        client._execute_query = AsyncMock(return_value=create_response)
+        
+        result = await client.create_page(
+            path="private/page",
+            title="Private Page",
+            content="# Private Content",
+            description="A private page",
+            editor="asciidoc",
+            locale="fr",
+            tags=["private", "draft"],
+            is_published=False,
+            is_private=True
+        )
+        
+        assert result["page"]["id"] == 124
+        assert result["responseResult"]["succeeded"] is True
+        
+        # Verify custom parameters
+        call_args = client._execute_query.call_args
+        variables = call_args[0][1]
+        assert variables["isPublished"] is False
+        assert variables["isPrivate"] is True
+        assert variables["editor"] == "asciidoc"
+        assert variables["locale"] == "fr"
     
     async def test_create_page_failure(self, mock_wiki_config):
         """Test page creation failure."""
@@ -308,8 +561,21 @@ class TestWikiJSClient:
             await client.create_page("docs/fail", "Fail", "content")
     
     async def test_update_page_success(self, mock_wiki_config):
-        """Test successful page update."""
+        """Test successful page update with enhanced parameter handling."""
         client = WikiJSClient(mock_wiki_config)
+        
+        # Mock get_page_by_id to return current page data
+        current_page_data = {
+            "id": 123,
+            "path": "docs/current-page",
+            "title": "Current Title",
+            "content": "Current content",
+            "description": "Current description",
+            "editor": "markdown",
+            "isPrivate": False,
+            "isPublished": True,
+            "locale": "en"
+        }
         
         update_response = {
             "pages": {
@@ -329,29 +595,118 @@ class TestWikiJSClient:
             }
         }
         
-        client._execute_query = AsyncMock(return_value=update_response)
+        with patch.object(client, 'get_page_by_id', new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = current_page_data
+            client._execute_query = AsyncMock(return_value=update_response)
+            
+            result = await client.update_page(
+                page_id=123,
+                content="# Updated Content",
+                title="Updated Page",
+                tags=["updated"]
+            )
+            
+            assert result["page"]["id"] == 123
+            assert result["responseResult"]["succeeded"] is True
+            
+            # Verify current page was fetched
+            mock_get.assert_called_once_with(123)
+            
+            # Verify correct parameters with merged data
+            call_args = client._execute_query.call_args
+            variables = call_args[0][1]
+            assert variables["id"] == 123
+            assert variables["content"] == "# Updated Content"
+            assert variables["title"] == "Updated Page"
+            assert variables["tags"] == ["updated"]
+            # Should preserve existing values
+            assert variables["description"] == "Current description"
+            assert variables["editor"] == "markdown"
+            assert variables["isPrivate"] is False
+            assert variables["path"] == "docs/current-page"
+    
+    async def test_update_page_partial_update(self, mock_wiki_config):
+        """Test partial page update preserves existing values."""
+        client = WikiJSClient(mock_wiki_config)
         
-        result = await client.update_page(
-            page_id=123,
-            content="# Updated Content",
-            title="Updated Page",
-            tags=["updated"]
-        )
+        # Mock get_page_by_id to return current page data
+        current_page_data = {
+            "id": 456,
+            "path": "docs/existing-page",
+            "title": "Existing Title",
+            "content": "Existing content",
+            "description": "Existing description",
+            "editor": "asciidoc",
+            "isPrivate": True,
+            "isPublished": False,
+            "locale": "fr"
+        }
         
-        assert result["page"]["id"] == 123
-        assert result["responseResult"]["succeeded"] is True
+        update_response = {
+            "pages": {
+                "update": {
+                    "responseResult": {
+                        "succeeded": True,
+                        "errorCode": None,
+                        "message": "Page updated successfully"
+                    },
+                    "page": {"id": 456}
+                }
+            }
+        }
         
-        # Verify correct parameters
-        call_args = client._execute_query.call_args
-        variables = call_args[0][1]
-        assert variables["id"] == 123
-        assert variables["content"] == "# Updated Content"
-        assert variables["title"] == "Updated Page"
-        assert variables["tags"] == ["updated"]
+        with patch.object(client, 'get_page_by_id', new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = current_page_data
+            client._execute_query = AsyncMock(return_value=update_response)
+            
+            # Only update content and description
+            result = await client.update_page(
+                page_id=456,
+                content="New content only",
+                description="New description"
+            )
+            
+            assert result["responseResult"]["succeeded"] is True
+            
+            # Verify all existing values were preserved
+            call_args = client._execute_query.call_args
+            variables = call_args[0][1]
+            assert variables["content"] == "New content only"
+            assert variables["description"] == "New description"
+            # Preserved values
+            assert variables["title"] == "Existing Title"
+            assert variables["editor"] == "asciidoc"
+            assert variables["isPrivate"] is True
+            assert variables["isPublished"] is False
+            assert variables["locale"] == "fr"
+            assert variables["path"] == "docs/existing-page"
+    
+    async def test_update_page_not_found(self, mock_wiki_config):
+        """Test update page when page doesn't exist."""
+        client = WikiJSClient(mock_wiki_config)
+        
+        with patch.object(client, 'get_page_by_id', new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = None
+            
+            with pytest.raises(Exception, match="Page with ID 999 not found"):
+                await client.update_page(page_id=999, content="New content")
     
     async def test_update_page_failure(self, mock_wiki_config):
-        """Test page update failure."""
+        """Test page update failure when GraphQL returns error."""
         client = WikiJSClient(mock_wiki_config)
+        
+        # Mock get_page_by_id to return current page data first
+        current_page_data = {
+            "id": 123,
+            "path": "docs/test-page",
+            "title": "Test Title",
+            "content": "Test content",
+            "description": "Test description",
+            "editor": "markdown",
+            "isPrivate": False,
+            "isPublished": True,
+            "locale": "en"
+        }
         
         failed_response = {
             "pages": {
@@ -365,10 +720,12 @@ class TestWikiJSClient:
             }
         }
         
-        client._execute_query = AsyncMock(return_value=failed_response)
-        
-        with pytest.raises(Exception, match="Failed to update page"):
-            await client.update_page(123, "new content")
+        with patch.object(client, 'get_page_by_id', new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = current_page_data
+            client._execute_query = AsyncMock(return_value=failed_response)
+            
+            with pytest.raises(Exception, match="Failed to update page"):
+                await client.update_page(123, "new content")
     
     async def test_delete_page_success(self, mock_wiki_config):
         """Test successful page deletion."""

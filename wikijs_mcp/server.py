@@ -45,17 +45,22 @@ class WikiJSMCPServer:
                     response += f"Path: {page['path']}\n"
                     if page.get('description'):
                         response += f"Description: {page['description']}\n"
-                    response += f"Updated: {page['updatedAt']}\n\n"
+                    if page.get('locale'):
+                        response += f"Locale: {page['locale']}\n"
+                    if page.get('id'):
+                        response += f"ID: {page['id']}\n"
+                    response += "\n"
                 
                 return response
         
         @self.app.tool(description="Get a specific wiki page by path or ID")
-        async def wiki_get_page(path: Optional[str] = None, id: Optional[int] = None) -> str:
+        async def wiki_get_page(path: Optional[str] = None, id: Optional[int] = None, locale: str = "en") -> str:
             """Get a specific wiki page by path or ID.
             
             Args:
                 path: Page path (e.g., 'docs/getting-started'). Use either path OR id, not both.
                 id: Page ID. Use either path OR id, not both.
+                locale: Page locale (default: 'en'). Only used with path.
             """
             # Validate that exactly one of path or id is provided
             has_path = path is not None
@@ -68,7 +73,7 @@ class WikiJSMCPServer:
             
             async with WikiJSClient(self.config) as client:
                 if has_path:
-                    page = await client.get_page_by_path(path)
+                    page = await client.get_page_by_path(path, locale)
                 else:
                     page = await client.get_page_by_id(id)
                 
@@ -82,12 +87,12 @@ class WikiJSMCPServer:
                     response += f"**Description:** {page['description']}\n"
                 response += f"**Editor:** {page.get('editor', 'unknown')}\n"
                 response += f"**Locale:** {page.get('locale', 'en')}\n"
-                if page.get('author'):
-                    response += f"**Author:** {page['author'].get('name', 'Unknown')}\n"
+                if page.get('authorName'):
+                    response += f"**Author:** {page['authorName']}\n"
                 response += f"**Created:** {page['createdAt']}\n"
                 response += f"**Updated:** {page['updatedAt']}\n"
                 if page.get('tags'):
-                    tags = [tag['tag'] for tag in page['tags']]
+                    tags = [tag.get('tag', tag.get('title', str(tag))) for tag in page['tags']]
                     response += f"**Tags:** {', '.join(tags)}\n"
                 response += "\n---\n\n"
                 response += page.get('content', '')
@@ -118,19 +123,22 @@ class WikiJSMCPServer:
                 return response
         
         @self.app.tool(description="Get wiki page tree structure")
-        async def wiki_get_tree(parent_path: str = "") -> str:
+        async def wiki_get_tree(parent_path: str = "", mode: str = "ALL", locale: str = "en", parent_id: Optional[int] = None) -> str:
             """Get wiki page tree structure.
             
             Args:
                 parent_path: Parent path to get tree from (default: root)
+                mode: Tree mode - ALL, FOLDERS, or PAGES (default: ALL)
+                locale: Page locale (default: 'en')
+                parent_id: Parent page ID (optional)
             """
             async with WikiJSClient(self.config) as client:
-                tree = await client.get_page_tree(parent_path)
+                tree = await client.get_page_tree(parent_path, mode, locale, parent_id)
                 
                 if not tree:
                     return "No pages found in tree"
                 
-                response = f"Wiki page tree from '{parent_path or 'root'}':\n\n"
+                response = f"Wiki page tree from '{parent_path or 'root'}' (mode: {mode}):\n\n"
                 for item in tree:
                     indent = "  " * item.get('depth', 0)
                     if item.get('isFolder'):

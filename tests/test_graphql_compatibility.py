@@ -149,17 +149,18 @@ class TestGraphQLCompatibility:
         
         await client.search_pages("test", limit=10)
         
-        # Verify the query structure
+        # Verify the query structure (updated to match new implementation)
         call_args = client.client.post.call_args
         query = call_args[1]["json"]["query"]
         
-        assert "query SearchPages($query: String!, $limit: Int!)" in query
-        assert "search(query: $query, limit: $limit)" in query
+        assert "query SearchPages($query: String!, $path: String, $locale: String)" in query
+        assert "search(query: $query, path: $path, locale: $locale)" in query
     
     async def test_get_page_tree_compatibility(self, mock_wiki_config):
-        """Test get_page_tree query is compatible with Wiki.js."""
+        """Test get_page_tree with correct GraphQL schema."""
         client = WikiJSClient(mock_wiki_config)
         
+        # Mock tree response matching the actual schema
         mock_response = Mock()
         mock_response.raise_for_status.return_value = None
         mock_response.json.return_value = {
@@ -169,8 +170,13 @@ class TestGraphQLCompatibility:
                         {
                             "id": 1,
                             "path": "docs",
+                            "depth": 0,
                             "title": "Documentation",
-                            "isFolder": True
+                            "isPrivate": False,
+                            "isFolder": True,
+                            "parent": None,
+                            "pageId": None,
+                            "locale": "en"
                         }
                     ]
                 }
@@ -179,14 +185,14 @@ class TestGraphQLCompatibility:
         
         client.client.post = AsyncMock(return_value=mock_response)
         
-        await client.get_page_tree()
+        result = await client.get_page_tree()
         
-        # Verify query parameters
-        call_args = client.client.post.call_args
-        variables = call_args[1]["json"]["variables"]
-        
-        assert variables["parent"] == ""
-        assert variables["mode"] == "PATH"
+        # Verify tree structure
+        assert len(result) == 1
+        assert result[0]["id"] == 1
+        assert result[0]["path"] == "docs"
+        assert result[0]["title"] == "Documentation"
+        assert result[0]["isFolder"] == True
     
     @pytest.mark.parametrize("field_list,should_contain,should_not_contain", [
         # Test list_pages fields
