@@ -1,6 +1,6 @@
 # WikiJS MCP Server
 
-A Model Context Protocol (MCP) server for integrating with Wiki.js instances, enabling Claude to read and update documentation.
+A Model Context Protocol (MCP) server for integrating with Wiki.js instances, enabling Claude Code to read and update documentation.
 
 ## Features
 
@@ -12,24 +12,23 @@ A Model Context Protocol (MCP) server for integrating with Wiki.js instances, en
 - **Update Pages**: Modify existing page content
 - **Authentication**: Secure API key-based access
 
-## Installation
+## Quick Start with Claude Code
 
-1. Clone this repository:
+1. **Clone this repository:**
 ```bash
 git clone <repository-url>
 cd wikijs-mcp
 ```
 
-2. Install dependencies:
-```bash
-pip install -e .
-```
-
-3. Configure environment:
+2. **Configure your Wiki.js credentials:**
 ```bash
 cp .env.example .env
 # Edit .env with your Wiki.js details
 ```
+
+3. **Claude Code will automatically detect the MCP server** - the repository includes a `.mcp.json` configuration file that Claude Code reads automatically.
+
+That's it! Claude Code will now have access to your Wiki.js instance.
 
 ## Configuration
 
@@ -51,73 +50,35 @@ DEBUG=false  # Optional, enables debug logging
 5. Set appropriate permissions for your use case
 6. Add the key to your `.env` file
 
-## Usage
+## Manual Configuration
 
-### 🐳 Docker (Recommended)
+If you need to manually configure Claude Code or use a different MCP client, you can use these configurations:
 
-#### Quick Start with Docker
-
-1. **Create your `.env` file** in the project root with your WikiJS settings
-
-2. **Start the server:**
-```bash
-docker compose up -d wikijs-mcp-server
-```
-
-3. **View logs:**
-```bash
-docker compose logs -f wikijs-mcp-server
-```
-
-#### Docker Management Commands
-
-```bash
-# Start server in background
-docker compose up -d wikijs-mcp-server
-
-# Access interactive shell
-docker compose run --rm wikijs-mcp-server bash
-
-# Stop server
-docker compose down
-```
-
-#### Docker with Claude Code
-
-Add to your Claude Code MCP configuration:
-
+### Docker (Recommended)
 ```json
 {
   "mcpServers": {
     "wikijs": {
       "command": "docker",
-      "args": ["exec", "-i", "wikijs-mcp-server", "python3", "-m", "wikijs_mcp.server"],
+      "args": ["compose", "run", "--rm", "-T", "wikijs-mcp-server", "python3", "-m", "wikijs_mcp.server", "--http"],
       "env": {
-        "DOCKER_CONTAINER": "wikijs-mcp-server"
+        "MCP_TRANSPORT": "http"
       }
     }
   }
 }
 ```
 
-### Standalone Server
-
-Run the server directly:
-```bash
-python -m wikijs_mcp.server
-```
-
-### With Claude Code (Native)
-
-Add to your Claude Code MCP configuration:
-
+### Native Installation
 ```json
 {
   "mcpServers": {
     "wikijs": {
       "command": "python3",
-      "args": ["-m", "wikijs_mcp.server"],
-      "cwd": "/path/to/wikijs-mcp"
+      "args": ["-m", "wikijs_mcp.server", "--http"],
+      "env": {
+        "MCP_TRANSPORT": "http"
+      }
     }
   }
 }
