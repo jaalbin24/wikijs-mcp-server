@@ -219,6 +219,23 @@ class WikiJSMCPServer:
                 response += f"**Updated:** {page_info.get('updatedAt', 'Just now')}\n"
                 
                 return response
+        
+        @self.app.tool(description="Delete a wiki page")
+        async def wiki_delete_page(id: int) -> str:
+            """Delete a wiki page by ID.
+            
+            Args:
+                id: Page ID to delete
+            """
+            async with WikiJSClient(self.config) as client:
+                result = await client.delete_page(page_id=id)
+                
+                response = f"✅ Successfully deleted page with ID: {id}\n"
+                response_result = result.get("responseResult", {})
+                if response_result.get("message"):
+                    response += f"**Message:** {response_result['message']}\n"
+                
+                return response
     
     def get_streamable_http_app(self):
         """Get the FastMCP StreamableHTTP app for HTTP transport."""

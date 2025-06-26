@@ -29,12 +29,12 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
         
         tools = await server.app.list_tools()
-        assert len(tools) == 6  # 6 wiki tools
+        assert len(tools) == 7  # 7 wiki tools
         
         tool_names = [tool.name for tool in tools]
         expected_names = [
             "wiki_search", "wiki_get_page", "wiki_list_pages", 
-            "wiki_get_tree", "wiki_create_page", "wiki_update_page"
+            "wiki_get_tree", "wiki_create_page", "wiki_update_page", "wiki_delete_page"
         ]
         assert set(tool_names) == set(expected_names)
     
@@ -463,6 +463,76 @@ class TestWikiJSMCPServer:
             page_id=1, content="Updated content", title="New Title", 
             description="New description", tags=["updated"]
         )
+
+    @patch('wikijs_mcp.server.WikiJSConfig.load_config')
+    @patch('wikijs_mcp.server.WikiJSClient')
+    async def test_call_tool_delete_page_success(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test calling delete_page tool successfully."""
+        mock_load_config.return_value = mock_wiki_config
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        mock_client_instance.__aexit__.return_value = None
+        mock_client_instance.delete_page.return_value = {
+            "responseResult": {
+                "succeeded": True,
+                "errorCode": None,
+                "message": "Page deleted successfully"
+            }
+        }
+        mock_client_class.return_value = mock_client_instance
+        
+        server = WikiJSMCPServer()
+        
+        result = await server.app.call_tool("wiki_delete_page", {"id": 123})
+        assert len(result) == 1
+        assert "Successfully deleted page with ID: 123" in result[0].text
+        assert "Page deleted successfully" in result[0].text
+        
+        # Verify client method was called correctly
+        mock_client_instance.delete_page.assert_called_once_with(page_id=123)
+
+    @patch('wikijs_mcp.server.WikiJSConfig.load_config')
+    @patch('wikijs_mcp.server.WikiJSClient')
+    async def test_call_tool_delete_page_without_message(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test calling delete_page tool without message in response."""
+        mock_load_config.return_value = mock_wiki_config
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        mock_client_instance.__aexit__.return_value = None
+        mock_client_instance.delete_page.return_value = {
+            "responseResult": {
+                "succeeded": True,
+                "errorCode": None
+            }
+        }
+        mock_client_class.return_value = mock_client_instance
+        
+        server = WikiJSMCPServer()
+        
+        result = await server.app.call_tool("wiki_delete_page", {"id": 456})
+        assert len(result) == 1
+        assert "Successfully deleted page with ID: 456" in result[0].text
+        # Should not have a message line since no message in response
+        assert "Message:" not in result[0].text
+
+    @patch('wikijs_mcp.server.WikiJSConfig.load_config')
+    @patch('wikijs_mcp.server.WikiJSClient')
+    async def test_call_tool_delete_page_failure(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test calling delete_page tool when deletion fails."""
+        mock_load_config.return_value = mock_wiki_config
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        mock_client_instance.__aexit__.return_value = None
+        
+        # Mock the client to raise an exception (this is what happens in client when deletion fails)
+        mock_client_instance.delete_page.side_effect = Exception("Failed to delete page: Page not found")
+        mock_client_class.return_value = mock_client_instance
+        
+        server = WikiJSMCPServer()
+        
+        # The server should propagate the exception from the client
+        with pytest.raises(Exception, match="Failed to delete page: Page not found"):
+            await server.app.call_tool("wiki_delete_page", {"id": 999})
 
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     @patch('wikijs_mcp.config.WikiJSConfig.validate_config')
