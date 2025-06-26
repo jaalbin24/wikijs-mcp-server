@@ -1,22 +1,21 @@
-"""Tests for HTTP server functionality."""
+"""Tests for MCP server functionality."""
 
 import asyncio
 import pytest
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from fastapi.testclient import TestClient
-from wikijs_mcp.server import WikiJSHTTPServer
+from wikijs_mcp.server import WikiJSMCPServer
 
 
 @pytest.mark.integration
-class TestWikiJSHTTPServer:
-    """Test cases for WikiJSHTTPServer class."""
+class TestWikiJSMCPServer:
+    """Test cases for WikiJSMCPServer class."""
     
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     def test_init(self, mock_load_config, mock_wiki_config):
-        """Test WikiJSHTTPServer initialization."""
+        """Test WikiJSMCPServer initialization."""
         mock_load_config.return_value = mock_wiki_config
         
-        server = WikiJSHTTPServer()
+        server = WikiJSMCPServer()
         
         assert server.config == mock_wiki_config
         assert server.app is not None
@@ -24,37 +23,36 @@ class TestWikiJSHTTPServer:
     
     
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
-    def test_health_endpoint(self, mock_load_config, mock_wiki_config):
-        """Test health check endpoint."""
+    async def test_list_tools(self, mock_load_config, mock_wiki_config):
+        """Test MCP tools listing."""
         mock_load_config.return_value = mock_wiki_config
-        server = WikiJSHTTPServer()
+        server = WikiJSMCPServer()
         
-        with TestClient(server.app) as client:
-            response = client.get("/health")
-            assert response.status_code == 200
-            assert response.json() == {"status": "healthy", "service": "wikijs-http-server"}
+        tools = await server.app.list_tools()
+        assert len(tools) == 6  # 6 wiki tools
+        
+        tool_names = [tool.name for tool in tools]
+        expected_names = [
+            "wiki_search", "wiki_get_page", "wiki_list_pages", 
+            "wiki_get_tree", "wiki_create_page", "wiki_update_page"
+        ]
+        assert set(tool_names) == set(expected_names)
     
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
-    def test_tools_endpoint(self, mock_load_config, mock_wiki_config):
-        """Test tools listing endpoint."""
+    def test_get_streamable_http_app(self, mock_load_config, mock_wiki_config):
+        """Test getting StreamableHTTP app for HTTP transport."""
         mock_load_config.return_value = mock_wiki_config
-        server = WikiJSHTTPServer()
+        server = WikiJSMCPServer()
         
-        with TestClient(server.app) as client:
-            response = client.get("/tools")
-            assert response.status_code == 200
-            data = response.json()
-            assert "endpoints" in data
-            assert len(data["endpoints"]) == 6  # 6 API endpoints
-            
-            endpoint_names = [ep["name"] for ep in data["endpoints"]]
-            expected_names = ["search", "get_page", "list_pages", "get_tree", "create_page", "update_page"]
-            assert set(endpoint_names) == set(expected_names)
+        app = server.get_streamable_http_app()
+        assert app is not None
+        # The app should be a Starlette/FastAPI app
+        assert hasattr(app, 'routes')
     
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     @patch('wikijs_mcp.server.WikiJSClient')
-    def test_search_endpoint_success(self, mock_client_class, mock_load_config, mock_wiki_config):
-        """Test search endpoint with successful response."""
+    async def test_call_tool_search_success(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test calling search tool with successful response."""
         # Setup mocks
         mock_load_config.return_value = mock_wiki_config
         mock_client_instance = AsyncMock()
@@ -65,12 +63,9 @@ class TestWikiJSHTTPServer:
         ]
         mock_client_class.return_value = mock_client_instance
         
-        server = WikiJSHTTPServer()
+        server = WikiJSMCPServer()
         
-        with TestClient(server.app) as client:
-            response = client.post("/search", json={"query": "test", "limit": 10})
-            assert response.status_code == 200
-            data = response.json()
-            assert "results" in data
-            assert len(data["results"]) == 1
-            assert data["results"][0]["title"] == "Test Page"
+        result = await server.app.call_tool("wiki_search", {"query": "test", "limit": 10})
+        assert len(result) == 1
+        assert "Found 1 pages for query 'test'" in result[0].text
+        assert "Test Page" in result[0].text
