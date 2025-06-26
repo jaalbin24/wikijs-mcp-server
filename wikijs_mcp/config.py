@@ -14,6 +14,11 @@ class WikiJSConfig(BaseModel):
     graphql_endpoint: str = Field(default="/graphql")
     debug: bool = Field(default=False)
     
+    # HTTP Server configuration
+    http_host: str = Field(default="0.0.0.0")
+    http_port: int = Field(default=8000)
+    cors_origins: list[str] = Field(default=["*"])
+    
     @classmethod
     def load_config(cls, env_file: str = ".env") -> "WikiJSConfig":
         """Load configuration from .env file."""
@@ -26,7 +31,10 @@ class WikiJSConfig(BaseModel):
             url=os.getenv("WIKIJS_URL", ""),
             api_key=os.getenv("WIKIJS_API_KEY", ""),
             graphql_endpoint=os.getenv("WIKIJS_GRAPHQL_ENDPOINT", "/graphql"),
-            debug=os.getenv("DEBUG", "false").lower() == "true"
+            debug=os.getenv("DEBUG", "false").lower() == "true",
+            http_host=os.getenv("HTTP_HOST", "0.0.0.0"),
+            http_port=int(os.getenv("HTTP_PORT", "8000")),
+            cors_origins=os.getenv("CORS_ORIGINS", "*").split(",") if os.getenv("CORS_ORIGINS") else ["*"]
         )
     
     @property
