@@ -10,6 +10,8 @@ A Model Context Protocol (MCP) server for integrating with Wiki.js instances, en
 - **Page Tree**: View wiki structure as a tree
 - **Create Pages**: Add new documentation pages
 - **Update Pages**: Modify existing page content
+- **Move Pages**: Relocate pages to new paths or locales
+- **Delete Pages**: Remove pages from the wiki
 - **Authentication**: Secure API key-based access
 
 ## Quick Start with Claude Code
@@ -110,6 +112,14 @@ Create a new wiki page.
 Update an existing wiki page.
 - **Parameters**: `id` (integer), `content` (string), `title` (optional), `description` (optional), `tags` (optional array)
 
+### `wiki_move_page`
+Move a page to a new path and/or locale.
+- **Parameters**: `id` (integer), `destination_path` (string), `destination_locale` (optional string, defaults to "en")
+
+### `wiki_delete_page`
+Delete a wiki page.
+- **Parameters**: `id` (integer)
+
 ## Example Usage with Claude
 
 ```
@@ -121,6 +131,9 @@ Update an existing wiki page.
 
 # Update documentation
 "Update page ID 123 with improved authentication examples"
+
+# Move pages to reorganize structure
+"Move page ID 456 from 'old/location' to 'docs/new-location'"
 
 # Create new documentation
 "Create a new page at 'docs/troubleshooting/common-issues' with troubleshooting guide"

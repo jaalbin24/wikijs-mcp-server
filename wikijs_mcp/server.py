@@ -236,6 +236,42 @@ class WikiJSMCPServer:
                     response += f"**Message:** {response_result['message']}\n"
                 
                 return response
+        
+        @self.app.tool(description="Move a wiki page to a new path and/or locale")
+        async def wiki_move_page(id: int, destination_path: str, destination_locale: str = "en") -> str:
+            """Move a wiki page to a new path and/or locale.
+            
+            Args:
+                id: Page ID to move
+                destination_path: New path for the page (e.g., 'docs/moved-page')
+                destination_locale: New locale for the page (default: 'en')
+            """
+            async with WikiJSClient(self.config) as client:
+                # Get the current page info for the response
+                current_page = await client.get_page_by_id(id)
+                if not current_page:
+                    return f"❌ Page with ID {id} not found"
+                
+                current_path = current_page.get('path', 'Unknown')
+                current_locale = current_page.get('locale', 'Unknown')
+                
+                result = await client.move_page(
+                    page_id=id,
+                    destination_path=destination_path,
+                    destination_locale=destination_locale
+                )
+                
+                response = f"✅ Successfully moved page:\n\n"
+                response += f"**Title:** {current_page.get('title', 'Unknown')}\n"
+                response += f"**From:** {current_path} (locale: {current_locale})\n"
+                response += f"**To:** {destination_path} (locale: {destination_locale})\n"
+                response += f"**Page ID:** {id}\n"
+                
+                response_result = result.get("responseResult", {})
+                if response_result.get("message"):
+                    response += f"**Message:** {response_result['message']}\n"
+                
+                return response
     
     def get_streamable_http_app(self):
         """Get the FastMCP StreamableHTTP app for HTTP transport."""

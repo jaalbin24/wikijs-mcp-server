@@ -414,3 +414,34 @@ class WikiJSClient:
             raise Exception(f"Failed to delete page: {response.get('message', 'Unknown error')}")
         
         return delete_result
+    
+    async def move_page(self, page_id: int, destination_path: str, destination_locale: str = "en") -> Dict[str, Any]:
+        """Move a page to a new path and/or locale."""
+        graphql_query = """
+        mutation MovePage($id: Int!, $destinationPath: String!, $destinationLocale: String!) {
+            pages {
+                move(id: $id, destinationPath: $destinationPath, destinationLocale: $destinationLocale) {
+                    responseResult {
+                        succeeded
+                        errorCode
+                        message
+                    }
+                }
+            }
+        }
+        """
+        
+        variables = {
+            "id": page_id,
+            "destinationPath": destination_path,
+            "destinationLocale": destination_locale
+        }
+        
+        result = await self._execute_query(graphql_query, variables)
+        move_result = result.get("pages", {}).get("move", {})
+        
+        response = move_result.get("responseResult", {})
+        if not response.get("succeeded"):
+            raise Exception(f"Failed to move page: {response.get('message', 'Unknown error')}")
+        
+        return move_result

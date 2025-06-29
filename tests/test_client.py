@@ -773,6 +773,88 @@ class TestWikiJSClient:
         
         with pytest.raises(Exception, match="Failed to delete page"):
             await client.delete_page(123)
+
+    async def test_move_page_success(self, mock_wiki_config):
+        """Test moving a page successfully."""
+        client = WikiJSClient(mock_wiki_config)
+        
+        move_response = {
+            "pages": {
+                "move": {
+                    "responseResult": {
+                        "succeeded": True,
+                        "errorCode": 0,
+                        "message": "Page moved successfully"
+                    }
+                }
+            }
+        }
+        
+        client._execute_query = AsyncMock(return_value=move_response)
+        
+        result = await client.move_page(123, "docs/new-location", "fr")
+        
+        assert result == move_response["pages"]["move"]
+        
+        # Verify the GraphQL query was called correctly
+        call_args = client._execute_query.call_args
+        query = call_args[0][0]
+        variables = call_args[0][1]
+        
+        assert "mutation MovePage" in query
+        assert variables == {
+            "id": 123,
+            "destinationPath": "docs/new-location",
+            "destinationLocale": "fr"
+        }
+
+    async def test_move_page_with_default_locale(self, mock_wiki_config):
+        """Test moving a page with default locale."""
+        client = WikiJSClient(mock_wiki_config)
+        
+        move_response = {
+            "pages": {
+                "move": {
+                    "responseResult": {
+                        "succeeded": True,
+                        "errorCode": 0,
+                        "message": None
+                    }
+                }
+            }
+        }
+        
+        client._execute_query = AsyncMock(return_value=move_response)
+        
+        result = await client.move_page(456, "docs/moved-page")
+        
+        assert result == move_response["pages"]["move"]
+        
+        # Verify default locale is used
+        call_args = client._execute_query.call_args
+        variables = call_args[0][1]
+        assert variables["destinationLocale"] == "en"
+
+    async def test_move_page_failure(self, mock_wiki_config):
+        """Test moving a page when the operation fails."""
+        client = WikiJSClient(mock_wiki_config)
+        
+        failed_response = {
+            "pages": {
+                "move": {
+                    "responseResult": {
+                        "succeeded": False,
+                        "errorCode": 404,
+                        "message": "Page not found"
+                    }
+                }
+            }
+        }
+        
+        client._execute_query = AsyncMock(return_value=failed_response)
+        
+        with pytest.raises(Exception, match="Failed to move page: Page not found"):
+            await client.move_page(999, "docs/nonexistent")
     
     @pytest.mark.parametrize("method,args", [
         ("search_pages", ["test"]),

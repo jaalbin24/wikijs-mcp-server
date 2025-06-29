@@ -29,12 +29,12 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
         
         tools = await server.app.list_tools()
-        assert len(tools) == 7  # 7 wiki tools
+        assert len(tools) == 8  # 8 wiki tools
         
         tool_names = [tool.name for tool in tools]
         expected_names = [
             "wiki_search", "wiki_get_page", "wiki_list_pages", 
-            "wiki_get_tree", "wiki_create_page", "wiki_update_page", "wiki_delete_page"
+            "wiki_get_tree", "wiki_create_page", "wiki_update_page", "wiki_delete_page", "wiki_move_page"
         ]
         assert set(tool_names) == set(expected_names)
     
@@ -533,6 +533,160 @@ class TestWikiJSMCPServer:
         # The server should propagate the exception from the client
         with pytest.raises(Exception, match="Failed to delete page: Page not found"):
             await server.app.call_tool("wiki_delete_page", {"id": 999})
+
+    @patch('wikijs_mcp.server.WikiJSConfig.load_config')
+    @patch('wikijs_mcp.server.WikiJSClient')
+    async def test_call_tool_move_page_success(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test calling move_page tool successfully."""
+        mock_load_config.return_value = mock_wiki_config
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        mock_client_instance.__aexit__.return_value = None
+        
+        # Mock getting current page info
+        mock_client_instance.get_page_by_id.return_value = {
+            "id": 123,
+            "title": "Test Page",
+            "path": "docs/test-page",
+            "locale": "en"
+        }
+        
+        # Mock move operation
+        mock_client_instance.move_page.return_value = {
+            "responseResult": {
+                "succeeded": True,
+                "errorCode": None,
+                "message": "Page moved successfully"
+            }
+        }
+        mock_client_class.return_value = mock_client_instance
+        
+        server = WikiJSMCPServer()
+        
+        result = await server.app.call_tool("wiki_move_page", {
+            "id": 123,
+            "destination_path": "docs/moved-page",
+            "destination_locale": "fr"
+        })
+        
+        assert len(result) == 1
+        response_text = result[0].text
+        assert "Successfully moved page" in response_text
+        assert "Test Page" in response_text
+        assert "docs/test-page" in response_text
+        assert "docs/moved-page" in response_text
+        assert "locale: en" in response_text
+        assert "locale: fr" in response_text
+        assert "Page moved successfully" in response_text
+        
+        # Verify client methods were called correctly
+        mock_client_instance.get_page_by_id.assert_called_once_with(123)
+        mock_client_instance.move_page.assert_called_once_with(
+            page_id=123,
+            destination_path="docs/moved-page",
+            destination_locale="fr"
+        )
+
+    @patch('wikijs_mcp.server.WikiJSConfig.load_config')
+    @patch('wikijs_mcp.server.WikiJSClient')
+    async def test_call_tool_move_page_with_default_locale(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test calling move_page tool with default locale."""
+        mock_load_config.return_value = mock_wiki_config
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        mock_client_instance.__aexit__.return_value = None
+        
+        # Mock getting current page info
+        mock_client_instance.get_page_by_id.return_value = {
+            "id": 456,
+            "title": "Another Page",
+            "path": "old/location",
+            "locale": "en"
+        }
+        
+        # Mock move operation
+        mock_client_instance.move_page.return_value = {
+            "responseResult": {
+                "succeeded": True,
+                "errorCode": None
+            }
+        }
+        mock_client_class.return_value = mock_client_instance
+        
+        server = WikiJSMCPServer()
+        
+        result = await server.app.call_tool("wiki_move_page", {
+            "id": 456,
+            "destination_path": "new/location"
+        })
+        
+        assert len(result) == 1
+        response_text = result[0].text
+        assert "Successfully moved page" in response_text
+        assert "Another Page" in response_text
+        
+        # Verify default locale was used
+        mock_client_instance.move_page.assert_called_once_with(
+            page_id=456,
+            destination_path="new/location",
+            destination_locale="en"
+        )
+
+    @patch('wikijs_mcp.server.WikiJSConfig.load_config')
+    @patch('wikijs_mcp.server.WikiJSClient')
+    async def test_call_tool_move_page_not_found(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test calling move_page tool when page doesn't exist."""
+        mock_load_config.return_value = mock_wiki_config
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        mock_client_instance.__aexit__.return_value = None
+        
+        # Mock page not found
+        mock_client_instance.get_page_by_id.return_value = None
+        mock_client_class.return_value = mock_client_instance
+        
+        server = WikiJSMCPServer()
+        
+        result = await server.app.call_tool("wiki_move_page", {
+            "id": 999,
+            "destination_path": "new/location"
+        })
+        
+        assert len(result) == 1
+        assert "Page with ID 999 not found" in result[0].text
+        
+        # Move should not be called since page wasn't found
+        mock_client_instance.move_page.assert_not_called()
+
+    @patch('wikijs_mcp.server.WikiJSConfig.load_config')
+    @patch('wikijs_mcp.server.WikiJSClient')
+    async def test_call_tool_move_page_failure(self, mock_client_class, mock_load_config, mock_wiki_config):
+        """Test calling move_page tool when move operation fails."""
+        mock_load_config.return_value = mock_wiki_config
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        mock_client_instance.__aexit__.return_value = None
+        
+        # Mock getting current page info
+        mock_client_instance.get_page_by_id.return_value = {
+            "id": 123,
+            "title": "Test Page",
+            "path": "docs/test-page",
+            "locale": "en"
+        }
+        
+        # Mock the client to raise an exception (this is what happens in client when move fails)
+        mock_client_instance.move_page.side_effect = Exception("Failed to move page: Destination already exists")
+        mock_client_class.return_value = mock_client_instance
+        
+        server = WikiJSMCPServer()
+        
+        # The server should propagate the exception from the client
+        with pytest.raises(Exception, match="Failed to move page: Destination already exists"):
+            await server.app.call_tool("wiki_move_page", {
+                "id": 123,
+                "destination_path": "docs/existing-page"
+            })
 
     @patch('wikijs_mcp.server.WikiJSConfig.load_config')
     @patch('wikijs_mcp.config.WikiJSConfig.validate_config')
