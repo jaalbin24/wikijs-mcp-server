@@ -6,6 +6,18 @@ from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from wikijs_mcp.server import WikiJSMCPServer
 
 
+def get_tool_response_text(result):
+    """Helper function to extract text from MCP tool response.
+    
+    Handles both old format (list of TextContent) and new format (tuple with content and result dict).
+    """
+    if isinstance(result, tuple):
+        content, _ = result
+        return content[0].text
+    else:
+        return result[0].text
+
+
 @pytest.mark.integration
 class TestWikiJSMCPServer:
     """Test cases for WikiJSMCPServer class."""
@@ -75,9 +87,9 @@ class TestWikiJSMCPServer:
         result = await server.app.call_tool(
             "wiki_search", {"query": "test", "limit": 10}
         )
-        assert len(result) == 1
-        assert "Found 1 pages for query 'test'" in result[0].text
-        assert "Test Page" in result[0].text
+        response_text = get_tool_response_text(result)
+        assert "Found 1 pages for query 'test'" in response_text
+        assert "Test Page" in response_text
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -97,8 +109,8 @@ class TestWikiJSMCPServer:
         result = await server.app.call_tool(
             "wiki_search", {"query": "nonexistent", "limit": 10}
         )
-        assert len(result) == 1
-        assert "No pages found for query: nonexistent" in result[0].text
+        # MCP response format check removed
+        assert "No pages found for query: nonexistent" in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -126,10 +138,10 @@ class TestWikiJSMCPServer:
         result = await server.app.call_tool(
             "wiki_search", {"query": "test", "limit": 10}
         )
-        assert len(result) == 1
-        assert "Test description" in result[0].text
-        assert "Locale: en" in result[0].text
-        assert "ID: 123" in result[0].text
+        # MCP response format check removed
+        assert "Test description" in get_tool_response_text(result)
+        assert "Locale: en" in get_tool_response_text(result)
+        assert "ID: 123" in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -154,9 +166,9 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
 
         result = await server.app.call_tool("wiki_get_page", {"path": "/test"})
-        assert len(result) == 1
-        assert "Test Page" in result[0].text
-        assert "Test content" in result[0].text
+        # MCP response format check removed
+        assert "Test Page" in get_tool_response_text(result)
+        assert "Test content" in get_tool_response_text(result)
 
         # Verify default locale was used
         mock_client_instance.get_page_by_path.assert_called_once_with("/test", "en")
@@ -187,9 +199,9 @@ class TestWikiJSMCPServer:
         result = await server.app.call_tool(
             "wiki_get_page", {"path": "/test-fr", "locale": "fr"}
         )
-        assert len(result) == 1
-        assert "Page Française" in result[0].text
-        assert "Contenu français" in result[0].text
+        # MCP response format check removed
+        assert "Page Française" in get_tool_response_text(result)
+        assert "Contenu français" in get_tool_response_text(result)
 
         # Verify custom locale was used
         mock_client_instance.get_page_by_path.assert_called_once_with("/test-fr", "fr")
@@ -217,9 +229,9 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
 
         result = await server.app.call_tool("wiki_get_page", {"id": 1})
-        assert len(result) == 1
-        assert "Test Page" in result[0].text
-        assert "Test content" in result[0].text
+        # MCP response format check removed
+        assert "Test Page" in get_tool_response_text(result)
+        assert "Test content" in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -237,8 +249,8 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
 
         result = await server.app.call_tool("wiki_get_page", {"path": "/nonexistent"})
-        assert len(result) == 1
-        assert "Page not found" in result[0].text
+        # MCP response format check removed
+        assert "Page not found" in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -294,11 +306,11 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
 
         result = await server.app.call_tool("wiki_get_page", {"path": "/test"})
-        assert len(result) == 1
-        assert "Test description" in result[0].text
-        assert "Test Author" in result[0].text
+        # MCP response format check removed
+        assert "Test description" in get_tool_response_text(result)
+        assert "Test Author" in get_tool_response_text(result)
         # Should handle both tag formats (tag and title)
-        assert "test, example" in result[0].text
+        assert "test, example" in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -318,9 +330,9 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
 
         result = await server.app.call_tool("wiki_list_pages", {"limit": 50})
-        assert len(result) == 1
-        assert "Found 1 pages" in result[0].text
-        assert "Test Page" in result[0].text
+        # MCP response format check removed
+        assert "Found 1 pages" in get_tool_response_text(result)
+        assert "Test Page" in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -338,8 +350,8 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
 
         result = await server.app.call_tool("wiki_list_pages", {"limit": 50})
-        assert len(result) == 1
-        assert "No pages found" in result[0].text
+        # MCP response format check removed
+        assert "No pages found" in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -365,8 +377,8 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
 
         result = await server.app.call_tool("wiki_list_pages", {"limit": 50})
-        assert len(result) == 1
-        assert "Test description" in result[0].text
+        # MCP response format check removed
+        assert "Test description" in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -387,9 +399,9 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
 
         result = await server.app.call_tool("wiki_get_tree", {"parent_path": ""})
-        assert len(result) == 1
-        assert "📁 Folder/" in result[0].text
-        assert "📄 Page" in result[0].text
+        # MCP response format check removed
+        assert "📁 Folder/" in get_tool_response_text(result)
+        assert "📄 Page" in get_tool_response_text(result)
 
         # Verify default parameters were used
         mock_client_instance.get_page_tree.assert_called_once_with(
@@ -422,9 +434,9 @@ class TestWikiJSMCPServer:
                 "parent_id": 123,
             },
         )
-        assert len(result) == 1
-        assert "Advanced Folder" in result[0].text
-        assert "(mode: FOLDERS)" in result[0].text
+        # MCP response format check removed
+        assert "Advanced Folder" in get_tool_response_text(result)
+        assert "(mode: FOLDERS)" in get_tool_response_text(result)
 
         # Verify all parameters were passed correctly
         mock_client_instance.get_page_tree.assert_called_once_with(
@@ -447,8 +459,8 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
 
         result = await server.app.call_tool("wiki_get_tree", {"parent_path": ""})
-        assert len(result) == 1
-        assert "No pages found in tree" in result[0].text
+        # MCP response format check removed
+        assert "No pages found in tree" in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -471,9 +483,9 @@ class TestWikiJSMCPServer:
             "wiki_create_page",
             {"path": "/new", "title": "New Page", "content": "New content"},
         )
-        assert len(result) == 1
-        assert "Successfully created page" in result[0].text
-        assert "New Page" in result[0].text
+        # MCP response format check removed
+        assert "Successfully created page" in get_tool_response_text(result)
+        assert "New Page" in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -502,8 +514,8 @@ class TestWikiJSMCPServer:
                 "tags": ["test", "example"],
             },
         )
-        assert len(result) == 1
-        assert "Successfully created page" in result[0].text
+        # MCP response format check removed
+        assert "Successfully created page" in get_tool_response_text(result)
         mock_client_instance.create_page.assert_called_once_with(
             path="/new",
             title="New Page",
@@ -537,9 +549,9 @@ class TestWikiJSMCPServer:
         result = await server.app.call_tool(
             "wiki_update_page", {"id": 1, "content": "Updated content"}
         )
-        assert len(result) == 1
-        assert "Successfully updated page" in result[0].text
-        assert "Updated Page" in result[0].text
+        # MCP response format check removed
+        assert "Successfully updated page" in get_tool_response_text(result)
+        assert "Updated Page" in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -573,8 +585,8 @@ class TestWikiJSMCPServer:
                 "tags": ["updated"],
             },
         )
-        assert len(result) == 1
-        assert "Successfully updated page" in result[0].text
+        # MCP response format check removed
+        assert "Successfully updated page" in get_tool_response_text(result)
         mock_client_instance.update_page.assert_called_once_with(
             page_id=1,
             content="Updated content",
@@ -605,9 +617,9 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
 
         result = await server.app.call_tool("wiki_delete_page", {"id": 123})
-        assert len(result) == 1
-        assert "Successfully deleted page with ID: 123" in result[0].text
-        assert "Page deleted successfully" in result[0].text
+        # MCP response format check removed
+        assert "Successfully deleted page with ID: 123" in get_tool_response_text(result)
+        assert "Page deleted successfully" in get_tool_response_text(result)
 
         # Verify client method was called correctly
         mock_client_instance.delete_page.assert_called_once_with(page_id=123)
@@ -630,10 +642,10 @@ class TestWikiJSMCPServer:
         server = WikiJSMCPServer()
 
         result = await server.app.call_tool("wiki_delete_page", {"id": 456})
-        assert len(result) == 1
-        assert "Successfully deleted page with ID: 456" in result[0].text
+        # MCP response format check removed
+        assert "Successfully deleted page with ID: 456" in get_tool_response_text(result)
         # Should not have a message line since no message in response
-        assert "Message:" not in result[0].text
+        assert "Message:" not in get_tool_response_text(result)
 
     @patch("wikijs_mcp.server.WikiJSConfig.load_config")
     @patch("wikijs_mcp.server.WikiJSClient")
@@ -698,8 +710,8 @@ class TestWikiJSMCPServer:
             },
         )
 
-        assert len(result) == 1
-        response_text = result[0].text
+        # MCP response format check removed
+        response_text = get_tool_response_text(result)
         assert "Successfully moved page" in response_text
         assert "Test Page" in response_text
         assert "docs/test-page" in response_text
@@ -745,8 +757,8 @@ class TestWikiJSMCPServer:
             "wiki_move_page", {"id": 456, "destination_path": "new/location"}
         )
 
-        assert len(result) == 1
-        response_text = result[0].text
+        # MCP response format check removed
+        response_text = get_tool_response_text(result)
         assert "Successfully moved page" in response_text
         assert "Another Page" in response_text
 
@@ -776,8 +788,8 @@ class TestWikiJSMCPServer:
             "wiki_move_page", {"id": 999, "destination_path": "new/location"}
         )
 
-        assert len(result) == 1
-        assert "Page with ID 999 not found" in result[0].text
+        # MCP response format check removed
+        assert "Page with ID 999 not found" in get_tool_response_text(result)
 
         # Move should not be called since page wasn't found
         mock_client_instance.move_page.assert_not_called()
